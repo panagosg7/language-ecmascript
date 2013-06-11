@@ -20,6 +20,7 @@ module Language.ECMAScript3.Parser
   , intLen
   , parseObjectLit  
   , Parser  
+  , SourceSpan (..)
   ) where
 
 import Language.ECMAScript3.Lexer hiding (identifier)
