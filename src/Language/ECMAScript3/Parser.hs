@@ -38,8 +38,15 @@ import Numeric(readDec,readOct,readHex)
 import Data.Char
 import Control.Monad.Identity
 import Data.Maybe (isJust, isNothing, fromMaybe)
+import Data.Typeable
+import Data.Generics hiding (Infix)
 
-type SourceSpan      = (SourcePos, SourcePos) 
+-- | Tag each entity with the span from the file from which it was parsed.
+
+data SourceSpan      = Span { sp_begin :: !SourcePos
+                            , sp_end   :: !SourcePos 
+                            }
+                       deriving (Eq, Ord, Show, Data, Typeable)
 
 -- We parameterize the parse tree over source-locations.
 type ParsedStatement = Statement SourceSpan
@@ -103,8 +110,8 @@ parseIfStmt = do
   ((do reserved "else"
        alternate <- parseStatement
        pos''     <- getPosition 
-       return $ IfStmt (pos, pos'') test consequent alternate)
-   <|> return (IfSingleStmt (pos, pos') test consequent))
+       return $ IfStmt (Span pos pos'') test consequent alternate)
+   <|> return (IfSingleStmt (Span pos pos') test consequent))
 
 parseSwitchStmt :: Stream s Identity Char => StatementParser s
 parseSwitchStmt =
@@ -114,7 +121,7 @@ parseSwitchStmt =
         colon
         statements <- many parseStatement
         pos' <- getPosition
-        return (CaseDefault (pos, pos') statements)
+        return (CaseDefault (Span pos pos') statements)
       parseCase = do
          pos <- getPosition
          reserved "case"
@@ -122,7 +129,7 @@ parseSwitchStmt =
          colon
          actions <- many parseStatement
          pos' <- getPosition 
-         return (CaseClause (pos, pos') condition actions)
+         return (CaseClause (Span pos pos') condition actions)
       isCaseDefault (CaseDefault _ _) = True   
       isCaseDefault _                 = False
       checkClauses cs = case filter isCaseDefault cs of
@@ -135,7 +142,7 @@ parseSwitchStmt =
           clauses <- braces $ many $ parseDefault <|> parseCase
           checkClauses clauses
           pos' <- getPosition 
-          return (SwitchStmt (pos, pos') test clauses)
+          return (SwitchStmt (Span pos pos') test clauses)
 
 parseWhileStmt:: Stream s Identity Char => StatementParser s
 parseWhileStmt = do
@@ -144,7 +151,7 @@ parseWhileStmt = do
   test <- parseParenExpr <?> "parenthesized test-expression in while loop"
   body <- parseStatement
   pos' <- getPosition
-  return (WhileStmt (pos, pos') test body)
+  return (WhileStmt (Span pos pos') test body)
 
 parseDoWhileStmt:: Stream s Identity Char => StatementParser s
 parseDoWhileStmt = do
@@ -155,7 +162,7 @@ parseDoWhileStmt = do
   test <- parseParenExpr <?> "parenthesized test-expression in do loop"
   pos' <- getPosition
   optional semi
-  return (DoWhileStmt (pos, pos') body test)
+  return (DoWhileStmt (Span pos pos') body test)
 
 parseContinueStmt:: Stream s Identity Char => StatementParser s
 parseContinueStmt = do
@@ -168,7 +175,7 @@ parseContinueStmt = do
         else return Nothing
   optional semi
   pos'' <- getPosition 
-  return $ ContinueStmt (pos, pos'') id
+  return $ ContinueStmt (Span pos pos'') id
 
 parseBreakStmt:: Stream s Identity Char => StatementParser s
 parseBreakStmt = do
@@ -181,21 +188,21 @@ parseBreakStmt = do
         else return Nothing
   optional semi           
   pos'' <- getPosition
-  return $ BreakStmt (pos, pos'') id
+  return $ BreakStmt (Span pos pos'') id
 
 parseBlockStmt:: Stream s Identity Char => StatementParser s
 parseBlockStmt = do
   pos <- getPosition
   statements <- braces (many parseStatement)
   pos' <- getPosition
-  return (BlockStmt (pos, pos') statements)
+  return (BlockStmt (Span pos pos') statements)
 
 parseEmptyStmt:: Stream s Identity Char => StatementParser s
 parseEmptyStmt = do
   pos <- getPosition
   semi
   pos' <- getPosition
-  return (EmptyStmt (pos, pos'))
+  return (EmptyStmt (Span pos pos'))
 
 parseLabelledStmt:: Stream s Identity Char => StatementParser s
 parseLabelledStmt = do
@@ -209,7 +216,7 @@ parseLabelledStmt = do
   statement <- parseStatement
   popLabel
   pos' <- getPosition
-  return (LabelledStmt (pos, pos') label statement)
+  return (LabelledStmt (Span pos pos') label statement)
 
 parseExpressionStmt:: Stream s Identity Char => StatementParser s
 parseExpressionStmt = do
@@ -217,7 +224,7 @@ parseExpressionStmt = do
   expr <- parseListExpr -- TODO: spec 12.4?
   optional semi
   pos' <- getPosition
-  return $ ExprStmt (pos, pos') expr
+  return $ ExprStmt (Span pos pos') expr
 
 
 parseForInStmt:: Stream s Identity Char => StatementParser s
@@ -233,7 +240,7 @@ parseForInStmt =
                                             return (init,expr)
         body <- parseStatement
         pos' <- getPosition
-        return $ ForInStmt (pos, pos') init expr body
+        return $ ForInStmt (Span pos pos') init expr body
 
 parseForStmt:: Stream s Identity Char => StatementParser s
 parseForStmt =
@@ -251,7 +258,7 @@ parseForStmt =
           reservedOp ")" <?> "closing paren"
           stmt <- parseStatement
           pos' <- getPosition
-          return $ ForStmt (pos, pos') init test iter stmt
+          return $ ForStmt (Span pos pos') init test iter stmt
 
 parseTryStmt:: Stream s Identity Char => StatementParser s
 parseTryStmt =
@@ -260,7 +267,7 @@ parseTryStmt =
                             id <- parens identifier
                             stmt <- parseStatement
                             pos' <- getPosition
-                            return $ CatchClause (pos, pos') id stmt
+                            return $ CatchClause (Span pos pos') id stmt
   in do reserved "try"
         pos <- getPosition
         guarded <- parseStatement
@@ -270,7 +277,7 @@ parseTryStmt =
         -- the spec requires at least a catch or a finally block to
         -- be present
         if isJust mCatch || isJust mFinally 
-          then return $ TryStmt (pos, pos') guarded mCatch mFinally
+          then return $ TryStmt (Span pos pos') guarded mCatch mFinally
           else fail $ "A try statement should have at least a catch\ 
                       \ or a finally block, at " ++ show pos
 
@@ -281,7 +288,7 @@ parseThrowStmt = do
   expr <- parseExpression
   optional semi
   pos' <- getPosition
-  return (ThrowStmt (pos, pos') expr)
+  return (ThrowStmt (Span pos pos') expr)
 
 parseReturnStmt:: Stream s Identity Char => StatementParser s
 parseReturnStmt = do
@@ -290,7 +297,7 @@ parseReturnStmt = do
   expr <- optionMaybe parseListExpr
   optional semi
   pos' <- getPosition
-  return (ReturnStmt (pos, pos') expr)
+  return (ReturnStmt (Span pos pos') expr)
 
 parseWithStmt:: Stream s Identity Char => StatementParser s
 parseWithStmt = do
@@ -299,7 +306,7 @@ parseWithStmt = do
   context <- parseParenExpr
   stmt <- parseStatement
   pos' <- getPosition
-  return (WithStmt (pos, pos') context stmt)
+  return (WithStmt (Span pos pos') context stmt)
 
 parseVarDecl :: Stream s Identity Char => Parser s (VarDecl SourceSpan) 
 parseVarDecl = do
@@ -307,7 +314,7 @@ parseVarDecl = do
   id <- identifier
   init <- (reservedOp "=" >> liftM Just parseExpression) <|> return Nothing
   pos' <- getPosition
-  return (VarDecl (pos, pos') id init)
+  return (VarDecl (Span pos pos') id init)
 
 parseVarDeclStmt:: Stream s Identity Char => StatementParser s
 parseVarDeclStmt = do 
@@ -316,7 +323,7 @@ parseVarDeclStmt = do
   decls <- parseVarDecl `sepBy` comma
   optional semi
   pos' <- getPosition
-  return (VarDeclStmt (pos, pos') decls)
+  return (VarDeclStmt (Span pos pos') decls)
 
 parseFunctionStmt:: Stream s Identity Char => StatementParser s
 parseFunctionStmt = do
@@ -327,7 +334,7 @@ parseFunctionStmt = do
   BlockStmt _ body <- withFreshLabelStack parseBlockStmt <?> 
                       "function body in { ... }"
   pos' <- getPosition
-  return (FunctionStmt (pos, pos') name args body)
+  return (FunctionStmt (Span pos pos') name args body)
 
 parseStatement:: Stream s Identity Char => StatementParser s
 parseStatement = parseIfStmt <|> parseSwitchStmt <|> parseWhileStmt 
@@ -364,21 +371,21 @@ parseThisRef = do
   pos <- getPosition
   reserved "this"
   pos' <- getPosition
-  return (ThisRef (pos, pos'))
+  return (ThisRef (Span pos pos'))
 
 parseNullLit:: Stream s Identity Char => ExpressionParser s
 parseNullLit = do
   pos <- getPosition
   reserved "null"
   pos' <- getPosition
-  return (NullLit (pos, pos'))
+  return (NullLit (Span pos pos'))
 
 
 parseBoolLit:: Stream s Identity Char => ExpressionParser s
 parseBoolLit = do
     pos <- getPosition
-    let parseTrueLit  = reserved "true"  >> getPosition >>= \pos' -> return (BoolLit (pos, pos') True)
-        parseFalseLit = reserved "false" >> getPosition >>= \pos' -> return (BoolLit (pos, pos') False)
+    let parseTrueLit  = reserved "true"  >> getPosition >>= \pos' -> return (BoolLit (Span pos pos') True)
+        parseFalseLit = reserved "false" >> getPosition >>= \pos' -> return (BoolLit (Span pos pos') False)
     parseTrueLit <|> parseFalseLit
 
 parseVarRef:: Stream s Identity Char => ExpressionParser s
@@ -396,7 +403,7 @@ parseFuncExpr = do
   -- labels don't cross function boundaries
   BlockStmt _ body <- withFreshLabelStack parseBlockStmt
   pos' <- getPosition
-  return $ FuncExpr (pos, pos') name args body
+  return $ FuncExpr (Span pos pos') name args body
 
 --{{{ parsing strings
 
@@ -457,7 +464,7 @@ parseStringLit = do
   --   var s = "string"   ;
   -- do not parse.
   pos' <- getPosition
-  return $ StringLit (pos, pos') str
+  return $ StringLit (Span pos pos') str
 
 --}}}
 
@@ -483,7 +490,7 @@ parseRegexpLit = do
   flags <- parseFlags
   spaces -- crucial for Parsec.Token parsers
   pos' <- getPosition
-  return $ flags (RegexpLit (pos, pos') pat)
+  return $ flags (RegexpLit (Span pos pos') pat)
           
 parseObjectLit:: Stream s Identity Char => ExpressionParser s
 parseObjectLit =
@@ -500,7 +507,7 @@ parseObjectLit =
     in do pos <- getPosition
           props <- braces (parseProp `sepEndBy` comma) <?> "object literal"
           pos' <- getPosition
-          return $ ObjectLit (pos, pos') props
+          return $ ObjectLit (Span pos pos') props
 
 --{{{ Parsing numbers.  From pg. 17-18 of ECMA-262.
 hexLit :: Stream s Identity Char => Parser s (Bool, Double)
@@ -551,8 +558,8 @@ parseNumLit = do
     notFollowedBy identifierStart <?> "whitespace"
     pos' <- getPosition
     if isint
-      then return $ IntLit (pos, pos') (round num) 
-      else return $ NumLit (pos, pos') num
+      then return $ IntLit (Span pos pos') (round num) 
+      else return $ NumLit (Span pos pos') num
 
 
 ------------------------------------------------------------------------------
@@ -564,7 +571,7 @@ withPos cstr p = do { pos <- getPosition; e <- p; return $ cstr pos e }
 withSpan cstr p = do pos   <- getPosition
                      x     <- p
                      pos'  <- getPosition
-                     return $ cstr (pos, pos') x
+                     return $ cstr (Span pos pos') x
 
 -------------------------------------------------------------------------------
 -- Compound Expression Parsers
@@ -607,7 +614,7 @@ parseNewExpr =
       constructor <- parseSimpleExprForNew Nothing -- right-associativity
       arguments <- try (parens (parseExpression `sepBy` comma)) <|> return []
       pos' <- getPosition
-      return (NewExpr (pos, pos') constructor arguments)) <|>
+      return (NewExpr (Span pos pos') constructor arguments)) <|>
   parseSimpleExpr'
 
 parseSimpleExpr (Just e) = ((dotRef e <|> funcApp e <|> bracketRef e) >>=
@@ -635,7 +642,7 @@ makeInfixExpr str constr = Infix parser AssocLeft where
     pos <- getPosition
     reservedOp str
     pos' <- getPosition
-    return (InfixExpr (pos, pos') constr)  -- points-free, returns a function
+    return (InfixExpr (Span pos pos') constr)  -- points-free, returns a function
 
 
 -- apparently, expression tables can't handle immediately-nested prefixes
@@ -656,7 +663,7 @@ parsePrefixedExpr = do
     Just op -> do
       innerExpr <- parsePrefixedExpr
       pos'      <- getPosition
-      return (PrefixExpr (pos, pos') op innerExpr)
+      return (PrefixExpr (Span pos pos') op innerExpr)
 
 exprTable:: Stream s Identity Char => [[Operator s ParserState Identity ParsedExpression]]
 exprTable = 
@@ -715,16 +722,16 @@ unaryAssignExpr = do
   p <- getPosition
   let prefixInc = do
         reservedOp "++"
-        liftM2 (\x p' -> UnaryAssignExpr (p, p') PrefixInc x) lvalue getPosition
+        liftM2 (\x p' -> UnaryAssignExpr (Span p p') PrefixInc x) lvalue getPosition
   let prefixDec = do
         reservedOp "--"
-        liftM2 (\x p' -> UnaryAssignExpr (p, p') PrefixDec x) lvalue getPosition
+        liftM2 (\x p' -> UnaryAssignExpr (Span p p') PrefixDec x) lvalue getPosition
   let postfixInc e = do
         reservedOp "++"
-        liftM2 (\x p' -> UnaryAssignExpr (p, p') PostfixInc x) (asLValue p e) getPosition
+        liftM2 (\x p' -> UnaryAssignExpr (Span p p') PostfixInc x) (asLValue p e) getPosition
   let postfixDec e = do
         reservedOp "--"
-        liftM2 (\x p' -> UnaryAssignExpr (p, p') PostfixDec x) (asLValue p e) getPosition
+        liftM2 (\x p' -> UnaryAssignExpr (Span p p') PostfixDec x) (asLValue p e) getPosition
   let other = do
         e <- parseSimpleExpr Nothing
         postfixInc e <|> postfixDec e <|> return e
@@ -747,7 +754,7 @@ parseTernaryExpr = do
   case e' of
     Nothing -> return e
     Just (l,r) -> do p' <- getPosition
-                     return $ CondExpr (p, p') e l r
+                     return $ CondExpr (Span p p') e l r
 
 assignOp :: Stream s Identity Char => Parser s AssignOp
 assignOp = (reservedOp "=" >> return OpAssign)
@@ -772,7 +779,7 @@ assignExpr = do
         lhs <- asLValue p lhs
         rhs <- assignExpr
         p' <- getPosition
-        return (AssignExpr (p, p') op lhs rhs)
+        return (AssignExpr (Span p p') op lhs rhs)
   assign <|> return lhs
 
 parseExpression:: Stream s Identity Char => ExpressionParser s
@@ -790,7 +797,7 @@ parseListExpr
        pos'  <- getPosition 
        case exprs of
          [expr] -> return   expr
-         es     -> return $ ListExpr (pos, pos') es
+         es     -> return $ ListExpr (Span pos pos') es
 
 
 
