@@ -42,6 +42,11 @@ instance PP AssignOp where
 instance PP PrefixOp where 
   pp = prefixOp
 
+instance PP (Prop a) where
+  pp = prop
+
+instance (PP a, PP b) => PP (a,b) where
+  pp (x, y) = (pp x) <+> (text ":") <+> (pp y)
 
 ----------------------------------------------------------------------------
 
