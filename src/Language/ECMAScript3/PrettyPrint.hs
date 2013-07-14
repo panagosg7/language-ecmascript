@@ -318,7 +318,9 @@ ppShiftExpression :: Expression a -> Doc
 ppShiftExpression e = case e of
   InfixExpr _ op e1 e2 | op `elem` [OpLShift, OpSpRShift, OpZfRShift] -> 
     ppShiftExpression e1 <+> infixOp op <+> ppAdditiveExpression e2  
-  _ -> ppAdditiveExpression e
+  -- WARNING: any case that has not been treeted -- TODO fix this
+  Cast _ e  -> text "Cast(" <+> ppAdditiveExpression  e <+> text ")"
+  _ -> error "no more case supported in ppExpression"
 
 -- 11.8.  
 -- | @ppRelationalExpression True@ is RelationalExpression,
@@ -395,6 +397,7 @@ ppAssignmentExpression hasIn e = case e of
 -- 11.14
 ppExpression :: Bool -> Expression a -> Doc
 ppExpression hasIn e = case e of
+  Cast _ e       -> text "Cast(" <+> ppExpression hasIn e <+> text ")"
   ListExpr _ es -> cat $ punctuate comma (map (ppExpression hasIn) es)
   _ -> ppAssignmentExpression hasIn e
 
@@ -406,3 +409,9 @@ maybe (Just a) f = f a
 -- 'Doc' will pretty-print it automatically
 javaScript :: JavaScript a -> Doc
 javaScript (Script _ ss) = stmtList ss
+
+-- PV 
+ppCastExpression hasIn e = case e of
+  Cast _ e ->  text "Cast(" <+> ppExpression hasIn e <+> text ")"
+  _   -> error "No more cases in ppExpression"
+  
