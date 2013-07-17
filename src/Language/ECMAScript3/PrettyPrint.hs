@@ -402,6 +402,11 @@ ppListExpression hasIn e = case e of
 ppExpression :: Bool -> Expression a -> Doc
 ppExpression hasIn e = case e of
   Cast _ e ->  text "Cast(" <+> ppExpression False e <+> text ")"
+  _ -> ppDeadCastExpression hasIn e
+
+ppDeadCastExpression :: Bool -> Expression a -> Doc
+ppDeadCastExpression hasIn e = case e of
+  DeadCast _ e ->  text "DeadCast(" <+> ppExpression False e <+> text ")"
   _ -> ppListExpression hasIn e
 
 
