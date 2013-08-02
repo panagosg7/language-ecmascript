@@ -42,6 +42,11 @@ instance PP AssignOp where
 instance PP PrefixOp where 
   pp = prefixOp
 
+instance PP (Prop a) where
+  pp = prop
+
+instance (PP a, PP b) => PP (a,b) where
+  pp (x, y) = (pp x) <+> (text ":") <+> (pp y)
 
 ----------------------------------------------------------------------------
 
@@ -388,10 +393,22 @@ ppAssignmentExpression hasIn e = case e of
   _ -> ppConditionalExpression hasIn e
   
 -- 11.14
-ppExpression :: Bool -> Expression a -> Doc
-ppExpression hasIn e = case e of
+ppListExpression :: Bool -> Expression a -> Doc
+ppListExpression hasIn e = case e of
   ListExpr _ es -> cat $ punctuate comma (map (ppExpression hasIn) es)
   _ -> ppAssignmentExpression hasIn e
+
+-- PV Adding new level for Cast
+ppExpression :: Bool -> Expression a -> Doc
+ppExpression hasIn e = case e of
+  Cast _ e ->  text "Cast(" <+> ppExpression False e <+> text ")"
+  _ -> ppDeadCastExpression hasIn e
+
+ppDeadCastExpression :: Bool -> Expression a -> Doc
+ppDeadCastExpression hasIn e = case e of
+  DeadCast _ e ->  text "DeadCast(" <+> ppExpression False e <+> text ")"
+  _ -> ppListExpression hasIn e
+
 
 maybe :: Maybe a -> (a -> Doc) -> Doc
 maybe Nothing  _ = empty
