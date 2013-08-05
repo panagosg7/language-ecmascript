@@ -67,7 +67,8 @@ instance HasAnnotation Expression where
    (ListExpr a es)              -> a
    (CallExpr a fn params)       -> a
    (FuncExpr a mid args s)      -> a
-   (Cast a e)                   -> a
+   (DownCast a e)               -> a
+   (UpCast a e)                 -> a
    (DeadCast a e)               -> a
 
 instance HasAnnotation Statement where
