@@ -398,11 +398,17 @@ ppListExpression hasIn e = case e of
   ListExpr _ es -> cat $ punctuate comma (map (ppExpression hasIn) es)
   _ -> ppAssignmentExpression hasIn e
 
--- PV Adding new level for Cast
+-- PV Adding new levels for Casts
 ppExpression :: Bool -> Expression a -> Doc
 ppExpression hasIn e = case e of
-  Cast _ e ->  text "Cast(" <+> ppExpression False e <+> text ")"
+  DownCast _ e ->  text "DownCast(" <+> ppExpression False e <+> text ")"
+  _ -> ppUpCastExpression hasIn e
+
+ppUpCastExpression :: Bool -> Expression a -> Doc
+ppUpCastExpression hasIn e = case e of
+  UpCast _ e ->  text "UpCast(" <+> ppExpression False e <+> text ")"
   _ -> ppDeadCastExpression hasIn e
+
 
 ppDeadCastExpression :: Bool -> Expression a -> Doc
 ppDeadCastExpression hasIn e = case e of
