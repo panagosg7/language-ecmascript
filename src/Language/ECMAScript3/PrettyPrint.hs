@@ -48,6 +48,9 @@ instance PP (Prop a) where
 instance (PP a, PP b) => PP (a,b) where
   pp (x, y) = (pp x) <+> (text ":") <+> (pp y)
 
+instance (PP a, PP b, PP c) => PP (a,b,c) where
+  pp (x, y, z) = (pp x) <+> (text ":") <+> (pp y) <+> (text ":") <+> (pp z)
+
 ----------------------------------------------------------------------------
 
 
