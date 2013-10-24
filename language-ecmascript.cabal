@@ -55,7 +55,7 @@ Library
     Language.ECMAScript3.Syntax
     Language.ECMAScript3.Syntax.Annotations
     Language.ECMAScript3.Syntax.Arbitrary
-    Language.ECMAScript3.Syntax.QuasiQuote
+--    Language.ECMAScript3.Syntax.QuasiQuote
     Language.ECMAScript3.Analysis.Environment
     Language.ECMAScript3.Analysis.LabelSets
     Language.ECMAScript3.Parser.Type

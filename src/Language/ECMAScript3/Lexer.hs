@@ -2,6 +2,8 @@
 -- token-stream. This module provides character-parsers for various
 -- JavaScript tokens.
 
+{-# LANGUAGE FlexibleContexts #-}
+
 module Language.ECMAScript3.Lexer(lexeme,identifier,reserved,operator,reservedOp,charLiteral,
                         stringLiteral,natural,integer,float,naturalOrFloat,
                         decimal,hexadecimal,octal,symbol,whiteSpace,parens,
@@ -11,14 +13,14 @@ module Language.ECMAScript3.Lexer(lexeme,identifier,reserved,operator,reservedOp
 import Prelude hiding (lex)
 import Text.Parsec
 import qualified Text.Parsec.Token as T
-import Language.ECMAScript3.Parser.State
+-- import Language.ECMAScript3.Parser.State
 import Language.ECMAScript3.Parser.Type
 import Control.Monad.Identity
 
-identifierStart :: Stream s Identity Char => Parser s Char
+identifierStart :: Stream s Identity Char => Parser s Char r
 identifierStart = letter <|> oneOf "$_"
 
-javascriptDef :: Stream s Identity Char =>T.GenLanguageDef s ParserState Identity
+javascriptDef :: Stream s Identity Char =>T.GenLanguageDef s (ParserState r) Identity
 javascriptDef =
   T.LanguageDef "/*"
                 "*/"
@@ -40,55 +42,55 @@ javascriptDef =
                  "[", "]", "{", "}", "(", ")","</","instanceof"]
                  True -- case-sensitive
             
-lex :: Stream s Identity Char => T.GenTokenParser s ParserState Identity
+lex :: Stream s Identity Char => T.GenTokenParser s (ParserState r) Identity
 lex = T.makeTokenParser javascriptDef
 
 -- everything but commaSep and semiSep
-identifier :: Stream s Identity Char => Parser s String
+identifier :: Stream s Identity Char => Parser s String r
 identifier = T.identifier	 lex
-reserved :: Stream s Identity Char => String -> Parser s ()
+reserved :: Stream s Identity Char => String -> Parser s () r
 reserved = T.reserved	 lex
-operator :: Stream s Identity Char => Parser s String
-operator = T.operator	 lex
-reservedOp :: Stream s Identity Char => String -> Parser s ()
+operator :: Stream s Identity Char => Parser s String r
+operator = T.operator	 lex 
+reservedOp :: Stream s Identity Char => String -> Parser s () r
 reservedOp = T.reservedOp lex	
-charLiteral :: Stream s Identity Char => Parser s Char
+charLiteral :: Stream s Identity Char => Parser s Char r 
 charLiteral = T.charLiteral lex	
-stringLiteral :: Stream s Identity Char => Parser s String
+stringLiteral :: Stream s Identity Char => Parser s String r
 stringLiteral = T.stringLiteral lex
-natural :: Stream s Identity Char => Parser s Integer
-natural = T.natural lex	
-integer :: Stream s Identity Char => Parser s Integer
+natural :: Stream s Identity Char => Parser s Integer r
+natural = T.natural lex	 
+integer :: Stream s Identity Char => Parser s Integer r
 integer = T.integer lex	
-float :: Stream s Identity Char => Parser s Double
+float :: Stream s Identity Char => Parser s Double r
 float = T.float lex
-naturalOrFloat :: Stream s Identity Char => Parser s (Either Integer Double)
+naturalOrFloat :: Stream s Identity Char => Parser s (Either Integer Double) r
 naturalOrFloat = T.naturalOrFloat lex
-decimal :: Stream s Identity Char => Parser s Integer
+decimal :: Stream s Identity Char => Parser s Integer r
 decimal = T.decimal lex	
-hexadecimal :: Stream s Identity Char => Parser s Integer
+hexadecimal :: Stream s Identity Char => Parser s Integer r
 hexadecimal = T.hexadecimal lex	
-octal :: Stream s Identity Char => Parser s Integer
+octal :: Stream s Identity Char => Parser s Integer r
 octal = T.octal lex
-symbol :: Stream s Identity Char => String -> Parser s String
+symbol :: Stream s Identity Char => String -> Parser s String r
 symbol = T.symbol lex
-whiteSpace :: Stream s Identity Char => Parser s ()
+whiteSpace :: Stream s Identity Char => Parser s () r
 whiteSpace = T.whiteSpace lex	
-parens :: Stream s Identity Char => Parser s a -> Parser s a
+parens :: Stream s Identity Char =>  Parser s a r ->  Parser s a r
 parens = T.parens	 lex
-braces :: Stream s Identity Char => Parser s a -> Parser s a
+braces :: Stream s Identity Char =>  Parser s a r ->  Parser s a r
 braces = T.braces	 lex
-squares :: Stream s Identity Char => Parser s a -> Parser s a
+squares :: Stream s Identity Char =>  Parser s a r ->  Parser s a r
 squares = T.squares lex	
-semi :: Stream s Identity Char => Parser s String
+semi :: Stream s Identity Char => Parser s String r
 semi = T.semi	 lex
-comma :: Stream s Identity Char => Parser s String
+comma :: Stream s Identity Char => Parser s String r
 comma = T.comma	 lex
-colon :: Stream s Identity Char => Parser s String
+colon :: Stream s Identity Char => Parser s String r 
 colon = T.colon lex
-dot :: Stream s Identity Char => Parser s String
+dot :: Stream s Identity Char => Parser s String r 
 dot = T.dot lex
-brackets :: Stream s Identity Char => Parser s a -> Parser s a
+brackets :: Stream s Identity Char =>  Parser s a r ->  Parser s a r
 brackets = T.brackets lex
-lexeme :: Stream s Identity Char => Parser s a -> Parser s a
+lexeme :: Stream s Identity Char =>  Parser s a r ->  Parser s a r
 lexeme = T.lexeme lex
