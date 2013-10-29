@@ -105,7 +105,7 @@ identifier = withSpan Id Lexer.identifier
 -- reserved-word, we truly have a syntax error.  Since input has been consumed,
 -- <|> will not try its alternate in parseExpression, and we will fail.
 
--- parseIfStmt:: Stream s Identity Char => StatementParser s r 
+parseIfStmt:: Stream s Identity Char => StatementParser s r 
 parseIfStmt = do
   pos <- getPosition
   reserved "if"
@@ -119,7 +119,7 @@ parseIfStmt = do
        return $ IfStmt (Span pos pos'', Nothing) test consequent alternate)
    <|> return (IfSingleStmt (Span pos pos', Nothing) test consequent))
 
--- parseSwitchStmt :: Stream s Identity Char => StatementParser s r
+parseSwitchStmt :: Stream s Identity Char => StatementParser s r
 parseSwitchStmt =
   let parseDefault = do
         pos <- getPosition
@@ -150,7 +150,7 @@ parseSwitchStmt =
           pos' <- getPosition 
           return (SwitchStmt (Span pos pos', Nothing) test clauses)
 
--- parseWhileStmt:: Stream s Identity Char => StatementParser s r
+parseWhileStmt:: Stream s Identity Char => StatementParser s r
 parseWhileStmt = do
   pos <- getPosition
   reserved "while"
@@ -159,7 +159,7 @@ parseWhileStmt = do
   pos' <- getPosition
   return (WhileStmt (Span pos pos', Nothing) test body)
 
--- parseDoWhileStmt:: Stream s Identity Char => StatementParser s r
+parseDoWhileStmt:: Stream s Identity Char => StatementParser s r
 parseDoWhileStmt = do
   pos <- getPosition
   reserved "do"
@@ -170,7 +170,7 @@ parseDoWhileStmt = do
   optional semi
   return (DoWhileStmt (Span pos pos', Nothing) body test)
 
--- parseContinueStmt:: Stream s Identity Char => StatementParser s r
+parseContinueStmt:: Stream s Identity Char => StatementParser s r
 parseContinueStmt = do
   pos <- getPosition
   reserved "continue"
@@ -183,7 +183,7 @@ parseContinueStmt = do
   pos'' <- getPosition 
   return $ ContinueStmt (Span pos pos', Nothing) id
 
--- parseBreakStmt:: Stream s Identity Char => StatementParser s r
+parseBreakStmt:: Stream s Identity Char => StatementParser s r
 parseBreakStmt = do
   pos <- getPosition
   reserved "break"
@@ -196,21 +196,21 @@ parseBreakStmt = do
   pos'' <- getPosition
   return $ BreakStmt (Span pos pos', Nothing) id
 
--- parseBlockStmt:: Stream s Identity Char => StatementParser s r
+parseBlockStmt:: Stream s Identity Char => StatementParser s r
 parseBlockStmt = do
   pos <- getPosition
   statements <- braces (many parseStatement)
   pos' <- getPosition
   return (BlockStmt (Span pos pos', Nothing) statements)
 
--- parseEmptyStmt:: Stream s Identity Char => StatementParser s r
+parseEmptyStmt:: Stream s Identity Char => StatementParser s r
 parseEmptyStmt = do
   pos <- getPosition
   semi
   pos' <- getPosition
   return (EmptyStmt (Span pos pos', Nothing))
 
--- parseLabelledStmt:: Stream s Identity Char => StatementParser s r
+parseLabelledStmt:: Stream s Identity Char => StatementParser s r
 parseLabelledStmt = do
   pos <- getPosition
   -- Lookahead for the colon.  If we don't see it, we are parsing an identifier
@@ -224,7 +224,7 @@ parseLabelledStmt = do
   pos' <- getPosition
   return (LabelledStmt (Span pos pos', Nothing) label statement)
 
--- parseExpressionStmt:: Stream s Identity Char => StatementParser s r
+parseExpressionStmt:: Stream s Identity Char => StatementParser s r
 parseExpressionStmt = do
   pos <- getPosition
   expr <- parseListExpr -- TODO: spec 12.4?
@@ -233,7 +233,7 @@ parseExpressionStmt = do
   return $ ExprStmt (Span pos pos', Nothing) expr
 
 
--- parseForInStmt:: Stream s Identity Char => StatementParser s r
+parseForInStmt:: Stream s Identity Char => StatementParser s r
 parseForInStmt =
   let parseInit = (reserved "var" >> liftM ForInVar identifier)
                <|> liftM ForInLVal lvalue
@@ -248,7 +248,7 @@ parseForInStmt =
         pos' <- getPosition
         return $ ForInStmt (Span pos pos', Nothing) init expr body
 
--- parseForStmt:: Stream s Identity Char => StatementParser s r
+parseForStmt:: Stream s Identity Char => StatementParser s r
 parseForStmt =
   let parseInit = (reserved "var" >> liftM VarInit (parseVarDecl `sepBy` comma))
                <|> liftM ExprInit parseListExpr
@@ -266,7 +266,7 @@ parseForStmt =
           pos' <- getPosition
           return $ ForStmt (Span pos pos', Nothing) init test iter stmt
 
--- parseTryStmt:: Stream s Identity Char => StatementParser s r
+parseTryStmt:: Stream s Identity Char => StatementParser s r
 parseTryStmt =
   let parseCatchClause = do pos <- getPosition
                             reserved "catch"
@@ -287,7 +287,7 @@ parseTryStmt =
           else fail $ "A try statement should have at least a catch\ 
                       \ or a finally block, at " ++ show pos
 
--- parseThrowStmt:: Stream s Identity Char => StatementParser s r
+parseThrowStmt:: Stream s Identity Char => StatementParser s r
 parseThrowStmt = do
   pos <- getPosition
   reserved "throw"
@@ -296,7 +296,7 @@ parseThrowStmt = do
   pos' <- getPosition
   return (ThrowStmt (Span pos pos', Nothing) expr)
 
--- parseReturnStmt:: Stream s Identity Char => StatementParser s r
+parseReturnStmt:: Stream s Identity Char => StatementParser s r
 parseReturnStmt = do
   pos <- getPosition
   reserved "return"
@@ -305,7 +305,7 @@ parseReturnStmt = do
   pos' <- getPosition
   return (ReturnStmt (Span pos pos', Nothing) expr)
 
--- parseWithStmt:: Stream s Identity Char => StatementParser s r
+parseWithStmt:: Stream s Identity Char => StatementParser s r
 parseWithStmt = do
   pos <- getPosition
   reserved "with"
@@ -314,7 +314,7 @@ parseWithStmt = do
   pos' <- getPosition
   return (WithStmt (Span pos pos', Nothing) context stmt)
 
--- parseVarDecl :: Stream s Identity Char => Parser s (VarDecl (SourceSpan, Maybe r)) r
+parseVarDecl :: Stream s Identity Char => Parser s (VarDecl (SourceSpan, Maybe r)) r
 parseVarDecl = do
   p     <- externP <$> getState
   pos   <- getPosition
@@ -327,9 +327,7 @@ parseVarDecl = do
   pos' <- getPosition
   return (VarDecl (Span pos pos', a) id e)
 
--- parseVarDeclStmt:: Stream s Identity Char => StatementParser s r
--- parseVarDeclStmt :: StatementParser [Char] r
-  	-- Defined at language-ecmascript/src/Language/ECMAScript3/Parser.hs:331:1
+parseVarDeclStmt:: Stream s Identity Char => StatementParser s r
 parseVarDeclStmt = do 
   pos <- getPosition
   reserved "var"
@@ -338,7 +336,7 @@ parseVarDeclStmt = do
   pos' <- getPosition
   return (VarDeclStmt (Span pos pos', Nothing) decls)
 
--- parseFunctionStmt:: Stream s Identity Char => StatementParser s r
+parseFunctionStmt:: Stream s Identity Char => StatementParser s r
 parseFunctionStmt = do
   pos <- getPosition
   name <- try (reserved "function" >> identifier) -- ambiguity with FuncExpr
@@ -349,7 +347,7 @@ parseFunctionStmt = do
   pos' <- getPosition
   return (FunctionStmt (Span pos pos', Nothing) name args body)
 
--- parseStatement:: Stream s Identity Char => StatementParser s r
+parseStatement:: Stream s Identity Char => StatementParser s r
 parseStatement = parseIfStmt <|> parseSwitchStmt <|> parseWhileStmt 
   <|> parseDoWhileStmt <|> parseContinueStmt <|> parseBreakStmt 
   <|> parseBlockStmt <|> parseEmptyStmt <|> parseForInStmt <|> parseForStmt
@@ -379,14 +377,14 @@ parseStatement = parseIfStmt <|> parseSwitchStmt <|> parseWhileStmt
 
 --{{{ Primary expressions
 
--- parseThisRef:: Stream s Identity Char => ExpressionParser s r
+parseThisRef:: Stream s Identity Char => ExpressionParser s r
 parseThisRef = do
   pos <- getPosition
   reserved "this"
   pos' <- getPosition
   return (ThisRef (Span pos pos', Nothing))
 
--- parseNullLit:: Stream s Identity Char => ExpressionParser s r
+parseNullLit:: Stream s Identity Char => ExpressionParser s r
 parseNullLit = do
   pos <- getPosition
   reserved "null"
@@ -394,20 +392,20 @@ parseNullLit = do
   return (NullLit (Span pos pos', Nothing))
 
 
--- parseBoolLit:: Stream s Identity Char => ExpressionParser s r
+parseBoolLit:: Stream s Identity Char => ExpressionParser s r
 parseBoolLit = do
     pos <- getPosition
     let parseTrueLit  = reserved "true"  >> getPosition >>= \pos' -> return (BoolLit (Span pos pos', Nothing) True)
         parseFalseLit = reserved "false" >> getPosition >>= \pos' -> return (BoolLit (Span pos pos', Nothing) False)
     parseTrueLit <|> parseFalseLit
 
--- parseVarRef:: Stream s Identity Char => ExpressionParser s r
+parseVarRef:: Stream s Identity Char => ExpressionParser s r
 parseVarRef = withSpan VarRef identifier 
 
--- parseArrayLit:: Stream s Identity Char => ExpressionParser s r
+parseArrayLit:: Stream s Identity Char => ExpressionParser s r
 parseArrayLit = withSpan ArrayLit (squares (parseExpression `sepEndBy` comma))
 
--- parseFuncExpr :: Stream s Identity Char => ExpressionParser s r
+parseFuncExpr :: Stream s Identity Char => ExpressionParser s r
 parseFuncExpr = do
   pos <- getPosition
   reserved "function"
@@ -427,20 +425,20 @@ escapeChars =
 allEscapes:: String
 allEscapes = map fst escapeChars
 
--- parseEscapeChar :: Stream s Identity Char => Parser s Char r
+parseEscapeChar :: Stream s Identity Char => Parser s Char r
 parseEscapeChar = do
   c <- oneOf allEscapes
   let (Just c') = lookup c escapeChars -- will succeed due to line above
   return c' 
 
--- parseAsciiHexChar :: Stream s Identity Char => Parser s Char r
+parseAsciiHexChar :: Stream s Identity Char => Parser s Char r
 parseAsciiHexChar = do
   char 'x'
   d1 <- hexDigit
   d2 <- hexDigit
   return ((chr.fst.head.readHex) (d1:d2:""))
 
--- parseUnicodeHexChar :: Stream s Identity Char => Parser s Char r
+parseUnicodeHexChar :: Stream s Identity Char => Parser s Char r
 parseUnicodeHexChar = do
   char 'u'
   liftM (chr.fst.head.readHex) 
@@ -465,7 +463,7 @@ parseStringLit' endWith =
         else return (c:cs)) <|>
    liftM2 (:) anyChar (parseStringLit' endWith)
 
--- parseStringLit:: Stream s Identity Char => ExpressionParser s r
+parseStringLit:: Stream s Identity Char => ExpressionParser s r
 parseStringLit = do
   pos <- getPosition
   -- parseStringLit' takes as an argument the quote-character that opened the
@@ -481,7 +479,7 @@ parseStringLit = do
 
 --}}}
 
--- parseRegexpLit:: Stream s Identity Char => ExpressionParser s r
+parseRegexpLit:: Stream s Identity Char => ExpressionParser s r
 parseRegexpLit = do
   let parseFlags = do
         flags <- many (oneOf "mgi")
@@ -505,7 +503,7 @@ parseRegexpLit = do
   pos' <- getPosition
   return $ flags (RegexpLit (Span pos pos', Nothing) pat)
           
--- parseObjectLit:: Stream s Identity Char => ExpressionParser s r
+parseObjectLit:: Stream s Identity Char => ExpressionParser s r
 parseObjectLit =
   let parseProp = do
         -- Parses a string, identifier or integer as the property name.  I
@@ -523,7 +521,7 @@ parseObjectLit =
           return $ ObjectLit (Span pos pos', Nothing) props
 
 --{{{ Parsing numbers.  From pg. 17-18 of ECMA-262.
--- hexLit :: Stream s Identity Char => Parser s (Bool, Double) r
+hexLit :: Stream s Identity Char => Parser s (Bool, Double) r
 hexLit = do
   try (string "0x")
   digits <- many1 (oneOf "0123456789abcdefABCDEF")
@@ -535,7 +533,7 @@ mkDecimal :: Integer -> Integer -> Integer -> Integer -> Double
 mkDecimal whole frac fracLen exp = 
   ((fromInteger whole) + ((fromInteger frac) * (10 ^^ (-fracLen)))) * (10 ^^ exp)
 
--- exponentPart :: Stream s Identity Char => Parser s Integer r
+exponentPart :: Stream s Identity Char => Parser s Integer r
 exponentPart = do
   oneOf "eE"
   (char '+' >> decimal) <|> (char '-' >> negate `fmap` decimal) <|> decimal
@@ -544,7 +542,7 @@ exponentPart = do
 jparser :: Stream s Identity Char => Parser s a r -> Parser s (Maybe a) r
 jparser = liftM Just
 
--- decLit :: Stream s Identity Char => Parser s (Bool, Double) r
+decLit :: Stream s Identity Char => Parser s (Bool, Double) r
 decLit = 
   (do whole <- decimal
       mfrac <- option Nothing (jparser (char '.' >> decimal))
@@ -564,7 +562,7 @@ decLit =
 intLen i | i `div` 10 < 1 = 1
 intLen i | otherwise = 1 + intLen (i `div` 10)
 
--- parseNumLit:: Stream s Identity Char => ExpressionParser s r
+parseNumLit:: Stream s Identity Char => ExpressionParser s r
 parseNumLit = do
     pos <- getPosition
     (isint, num) <- lexeme $ hexLit <|> decLit
@@ -581,18 +579,22 @@ parseNumLit = do
 
 withPos cstr p = do { pos <- getPosition; e <- p; return $ cstr pos e }
 
-withSpan cstr p = do pos    <- getPosition
-                     x      <- p
-                     pos'   <- getPosition
-                     return  $ cstr (Span pos pos', Nothing) x
+withSpan cstr p = do pos   <- getPosition
+                     x     <- p
+                     pos'  <- getPosition
+                     return $ cstr (Span pos pos', Nothing) x
 
 -------------------------------------------------------------------------------
 -- Compound Expression Parsers
 -------------------------------------------------------------------------------
 
+{-dotRef :: Stream s Identity Char => Expression (SourceSpan, Maybe r) -}
+{-       -> ParsecT s (ParserState s r) Identity (Expression (SourceSpan, Maybe r))-}
 dotRef e = (reservedOp "." >> withSpan cstr identifier) <?> "property.ref"
     where cstr pos = DotRef pos e
 
+{-funcApp :: Stream s Identity Char => Expression (SourceSpan, Maybe a) -> -}
+{-  ParsecT s (ParserState s a) Identity (Expression (SourceSpan, Maybe a))-}
 funcApp e = parens (withSpan cstr (parseExpression `sepBy` comma)) 
          <?>"(function application)"
     where cstr pos = CallExpr pos e
@@ -604,23 +606,23 @@ bracketRef e = brackets (withSpan cstr parseExpression) <?> "[property-ref]"
 -- Expression Parsers
 -------------------------------------------------------------------------------
 
--- parseParenExpr:: Stream s Identity Char => ExpressionParser s r
+parseParenExpr:: Stream s Identity Char => ExpressionParser s r
 parseParenExpr = parens parseListExpr
 
 -- everything above expect functions
--- parseExprForNew :: Stream s Identity Char => ExpressionParser s r
+parseExprForNew :: Stream s Identity Char => ExpressionParser s r
 parseExprForNew = parseThisRef <|> parseNullLit <|> parseBoolLit <|> parseStringLit 
   <|> parseArrayLit <|> parseParenExpr <|> parseNewExpr <|> parseNumLit 
   <|> parseRegexpLit <|> parseObjectLit <|> parseVarRef
 
 -- all the expression parsers defined above
--- parseSimpleExpr' :: Stream s Identity Char => ExpressionParser s r
+parseSimpleExpr' :: Stream s Identity Char => ExpressionParser s r
 parseSimpleExpr' = parseThisRef <|> parseNullLit <|> parseBoolLit 
   <|> parseStringLit <|> parseArrayLit <|> parseParenExpr
   <|> parseFuncExpr <|> parseNumLit <|> parseRegexpLit <|> parseObjectLit
   <|> parseVarRef
 
--- parseNewExpr :: Stream s Identity Char => ExpressionParser s r
+parseNewExpr :: Stream s Identity Char => ExpressionParser s r
 parseNewExpr =
   (do pos <- getPosition
       reserved "new"
@@ -630,6 +632,8 @@ parseNewExpr =
       return (NewExpr (Span pos pos', Nothing) constructor arguments)) <|>
   parseSimpleExpr'
 
+
+-- parseSimpleExpr :: Stream s Identity Char => Maybe (Expression (SourceSpan, Maybe r)) -> ExpressionParser s r
 parseSimpleExpr (Just e) = ((dotRef e <|> funcApp e <|> bracketRef e) >>=
                             parseSimpleExpr . Just)  
                         <|> return e
@@ -637,8 +641,8 @@ parseSimpleExpr Nothing = do
   e <- parseNewExpr <?> "expression (3)"
   parseSimpleExpr (Just e)
 
--- parseSimpleExprForNew :: Stream s Identity Char
---                      =>(Maybe (ParsedExpression r)) -> ExpressionParser s r
+parseSimpleExprForNew :: Stream s Identity Char
+                     =>(Maybe (ParsedExpression r)) -> ExpressionParser s r
 parseSimpleExprForNew (Just e) = ((dotRef e <|> bracketRef e) >>=
                                   parseSimpleExprForNew . Just)
                               <|> return e
@@ -660,7 +664,7 @@ makeInfixExpr str constr = Infix parser AssocLeft where
 
 
 -- apparently, expression tables can't handle immediately-nested prefixes
--- parsePrefixedExpr :: Stream s Identity Char => ExpressionParser s r
+parsePrefixedExpr :: Stream s Identity Char => ExpressionParser s r
 parsePrefixedExpr = do
   pos <- getPosition
   op <- optionMaybe $ (reservedOp "!" >> return PrefixLNot) <|> 
@@ -711,7 +715,7 @@ exprTable =
   , [ makeInfixExpr "||" OpLOr ]
   ]
 
--- parseExpression' :: Stream s Identity Char => ExpressionParser s r
+parseExpression' :: Stream s Identity Char => ExpressionParser s r
 parseExpression' = 
   buildExpressionParser exprTable parsePrefixedExpr <?> "simple expression"
 
@@ -725,34 +729,41 @@ asLValue p' e = case e of
   BracketRef p e1 e2 -> return (LBracket p e1 e2)
   otherwise -> fail $ "expected a left-value at " ++ show p'
 
--- lvalue :: Stream s Identity Char => Parser s (LValue (SourceSpan, Maybe r)) r 
+lvalue :: Stream s Identity Char => Parser s (LValue (SourceSpan, Maybe r)) r 
 lvalue = do
   p <- getPosition
   e <- parseSimpleExpr Nothing
   asLValue p e
 
---unaryAssignExpr :: Stream s Identity Char => ExpressionParser s r
+unaryAssignExpr :: Stream s Identity Char => ExpressionParser s r
 unaryAssignExpr = do
-  p <- getPosition
-  let prefixInc = do
-        reservedOp "++"
-        liftM2 (\x p' -> UnaryAssignExpr (Span p p', Nothing) PrefixInc x) lvalue getPosition
-  let prefixDec = do
-        reservedOp "--"
-        liftM2 (\x p' -> UnaryAssignExpr (Span p p', Nothing) PrefixDec x) lvalue getPosition
-  let postfixInc e = do
-        reservedOp "++"
-        liftM2 (\x p' -> UnaryAssignExpr (Span p p', Nothing) PostfixInc x) (asLValue p e) getPosition
-  let postfixDec e = do
-        reservedOp "--"
-        liftM2 (\x p' -> UnaryAssignExpr (Span p p', Nothing) PostfixDec x) (asLValue p e) getPosition
-  let other = do
-        e <- parseSimpleExpr Nothing
-        postfixInc e <|> postfixDec e <|> return e
-  prefixInc <|> prefixDec <|> other
+    p <- getPosition
+    prefixInc p <|> prefixDec p <|> other p
 
--- parseTernaryExpr':: Stream s Identity Char
---                  => Parser s (ParsedExpression r, ParsedExpression r) r
+prefixInc :: Stream s Identity Char => SourcePos -> ParsecT s (ParserState s a) Identity (Expression (SourceSpan, Maybe a))
+prefixInc p = do
+    reservedOp "++"
+    liftM2 (\x p' -> UnaryAssignExpr (Span p p', Nothing) PrefixInc x) lvalue getPosition
+postfixInc e p = do
+    reservedOp "++"
+    liftM2 (\x p' -> UnaryAssignExpr (Span p p', Nothing) PostfixInc x) (asLValue p e) getPosition
+postfixDec e p = do
+    reservedOp "--"
+    liftM2 (\x p' -> UnaryAssignExpr (Span p p', Nothing) PostfixDec x) (asLValue p e) getPosition
+
+other :: Stream s Identity Char => SourcePos -> ParsecT s (ParserState s a) Identity (Expression (SourceSpan, Maybe a))
+other p = do
+    e <- parseSimpleExpr Nothing
+    postfixInc e p <|> postfixDec e p <|> return e
+
+prefixDec :: Stream s Identity Char => SourcePos -> ParsecT s (ParserState s a) Identity (Expression (SourceSpan, Maybe a))
+prefixDec p = do
+    reservedOp "--"
+    liftM2 (\x p' -> UnaryAssignExpr (Span p p', Nothing) PrefixDec x) lvalue getPosition
+
+
+parseTernaryExpr':: Stream s Identity Char
+                 => Parser s (ParsedExpression r, ParsedExpression r) r
 parseTernaryExpr' = do
     reservedOp "?"
     l <- assignExpr
@@ -760,7 +771,7 @@ parseTernaryExpr' = do
     r <- assignExpr
     return (l,r)
 
--- parseTernaryExpr:: Stream s Identity Char => ExpressionParser s r
+parseTernaryExpr:: Stream s Identity Char => ExpressionParser s r
 parseTernaryExpr = do
   p <- getPosition
   e <- parseExpression'
@@ -770,7 +781,7 @@ parseTernaryExpr = do
     Just (l,r) -> do p' <- getPosition
                      return $ CondExpr (Span p p', Nothing) e l r
 
--- assignOp :: Stream s Identity Char => Parser s AssignOp r
+assignOp :: Stream s Identity Char => Parser s AssignOp r
 assignOp = (reservedOp "=" >> return OpAssign)
         <|>(reservedOp "+=" >> return OpAssignAdd)
         <|>(reservedOp "-=" >> return OpAssignSub)
@@ -784,7 +795,7 @@ assignOp = (reservedOp "=" >> return OpAssign)
         <|>(reservedOp "^=" >> return OpAssignBXor)
         <|>(reservedOp "|=" >> return OpAssignBOr)
 
--- assignExpr :: Stream s Identity Char => ExpressionParser s r
+assignExpr :: Stream s Identity Char => ExpressionParser s r
 assignExpr = do
   p <- getPosition
   lhs <- parseTernaryExpr
@@ -796,10 +807,10 @@ assignExpr = do
         return (AssignExpr (Span p p', Nothing) op lhs rhs)
   assign <|> return lhs
 
--- parseExpression:: Stream s Identity Char => ExpressionParser s r
+parseExpression:: Stream s Identity Char => ExpressionParser s r
 parseExpression = assignExpr
 
--- parseListExpr :: Stream s Identity Char => ExpressionParser s r
+parseListExpr :: Stream s Identity Char => ExpressionParser s r
 -- parseListExpr = assignExpr `sepBy1` comma >>= \exprs ->
 --   case exprs of
 --     [expr] -> return expr
@@ -815,18 +826,21 @@ parseListExpr
 
 
 
--- parseScript:: Stream s Identity Char => Parser s (JavaScript (SourceSpan, Maybe r)) r
+parseScript:: Stream s Identity Char => Parser s (JavaScript (SourceSpan, Maybe r)) r
 parseScript = do
   whiteSpace
   withSpan Script (parseStatement `sepBy` whiteSpace)
   
 -- | Parse from a stream; same as 'Text.Parsec.parse'
-{-parse :: Stream s Identity Char-}
-{-      => Parser String (Maybe r) r-}
-{-      -> Parser s a r -- ^ The parser to use      -}
-{-      -> SourceName -- ^ Name of the source file-}
-{-      -> s -- ^ the stream to parse, usually a 'String'-}
-{-      -> Either ParseError a-}
+
+-- NOTE: This only compiles if the external parser and the current parser are
+-- working of separate streams.
+parse :: (Stream s Identity t, Stream s' Identity Char) =>
+  Parser s' (Maybe r) r             -- ^ External parser
+  -> Parsec s (ParserState s' r) a  -- ^ The parser to use
+  -> SourceName                     -- ^ Name of the source file
+  -> s                              -- ^ The stream to parse (string) 
+  -> Either ParseError a
 parse externP p = runParser p (initialParserState externP)
 
 -- | Read a JavaScript program from file an parse it into a list of
@@ -844,15 +858,18 @@ parseJavaScriptFromFile externP filename = do
 parseJavaScriptFromFileFst f = map (fmap fst) <$> parseJavaScriptFromFile parserZero f 
 
 -- | Parse a JavaScript program from a string
-parseScriptFromString :: Parser String (Maybe r) r
-                      -> String -- ^ source file name
-                      -> String -- ^ JavaScript source to parse
-                      -> Either ParseError (JavaScript (SourceSpan, Maybe r))
+parseScriptFromString ::
+  Stream s Identity Char =>
+  Parser s (Maybe r) r
+  -> SourceName
+  -> s
+  -> Either ParseError (JavaScript (SourceSpan, Maybe r))
+  	-- Defined at language-ecmascript/src/Language/ECMAScript3/Parser.hs:863:1
 parseScriptFromString externP = parse externP parseScript
 
 -- | Parse a JavaScript source string into a list of statements
-parseString :: Parser String (Maybe r) r -> String -- ^ JavaScript source
-            -> [Statement (SourceSpan, Maybe r)]
+parseString :: Stream s Identity Char =>
+  Parser s (Maybe r) r -> s -> [Statement (SourceSpan, Maybe r)]
 parseString externP str = case parse externP parseScript "" str of
   Left err -> error (show err)
   Right (Script _ stmts) -> stmts
