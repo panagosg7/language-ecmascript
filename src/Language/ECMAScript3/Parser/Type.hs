@@ -3,14 +3,13 @@ module Language.ECMAScript3.Parser.Type(
   , ParserState (..)
   ) where
 
--- import Language.ECMAScript3.Parser.State
 import Text.Parsec
 import Control.Monad.Identity
 
-type Parser s a r = ParsecT s (ParserState r) Identity a
+type Parser s a r = ParsecT s (ParserState s r) Identity a
 
-data ParserState r = PST { 
+data ParserState s r = PST { 
     -- Variable declaration annotations parser
-    externP :: Parser String (Maybe r) r,
+    externP :: Parser s (Maybe r) r,
     labs :: [String] 
   } 

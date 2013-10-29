@@ -8,22 +8,30 @@ module Language.ECMAScript3.Lexer(lexeme,identifier,reserved,operator,reservedOp
                         stringLiteral,natural,integer,float,naturalOrFloat,
                         decimal,hexadecimal,octal,symbol,whiteSpace,parens,
                         braces,brackets,squares,semi,comma,colon,dot,
-                        identifierStart) where
+                        identifierStart, annotId) where
 
 import Prelude hiding (lex)
 import Text.Parsec
-import qualified Text.Parsec.Token as T
+-- PV: using my version of Token ...
+import qualified Language.ECMAScript3.Token as T
+-- import qualified Text.Parsec.Token as T
 -- import Language.ECMAScript3.Parser.State
 import Language.ECMAScript3.Parser.Type
 import Control.Monad.Identity
 
+annotId :: String
+annotId = ":"
+
+
 identifierStart :: Stream s Identity Char => Parser s Char r
 identifierStart = letter <|> oneOf "$_"
 
-javascriptDef :: Stream s Identity Char =>T.GenLanguageDef s (ParserState r) Identity
+javascriptDef :: Stream s Identity Char =>T.GenLanguageDef s (ParserState s r) Identity
 javascriptDef =
   T.LanguageDef "/*"
                 "*/"
+                annotId -- Character that differentiates an annotation comment from a regular comment.
+                        -- I.e. "/*: ... */" from "/* ... */"
                 "//"
                 False -- no nested comments
                 identifierStart
@@ -42,7 +50,7 @@ javascriptDef =
                  "[", "]", "{", "}", "(", ")","</","instanceof"]
                  True -- case-sensitive
             
-lex :: Stream s Identity Char => T.GenTokenParser s (ParserState r) Identity
+lex :: Stream s Identity Char => T.GenTokenParser s (ParserState s r) Identity
 lex = T.makeTokenParser javascriptDef
 
 -- everything but commaSep and semiSep
