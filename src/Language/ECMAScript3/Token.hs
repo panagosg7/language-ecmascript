@@ -58,7 +58,7 @@ data GenLanguageDef s u m
     -- | Character that differentiates an annotation comment from a regular comment.
     -- I.e. "/*: ... */" from "/* ... */"
 
-    annotChar      :: String,
+    annotChar      :: Char,
 
     -- | Describes the start of a line comment. Use the empty string if the
     -- language doesn't support line comments. For example \"\/\/\". 
@@ -705,7 +705,7 @@ makeTokenParser languageDef
         = try ( do {  (string "/*"); 
         -- PV:
         -- Do not parse annotation comments here!
-                      notFollowedBy (string (annotChar languageDef)); 
+                      notFollowedBy (char (annotChar languageDef)); 
                       inComment })
 
     inComment

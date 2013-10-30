@@ -8,7 +8,7 @@ module Language.ECMAScript3.Lexer(lexeme,identifier,reserved,operator,reservedOp
                         stringLiteral,natural,integer,float,naturalOrFloat,
                         decimal,hexadecimal,octal,symbol,whiteSpace,parens,
                         braces,brackets,squares,semi,comma,colon,dot,
-                        identifierStart, annotId) where
+                        identifierStart, noCommentEnd) where
 
 import Prelude hiding (lex)
 import Text.Parsec
@@ -19,19 +19,21 @@ import qualified Language.ECMAScript3.Token as T
 import Language.ECMAScript3.Parser.Type
 import Control.Monad.Identity
 
-annotId :: String
-annotId = ":"
-
-
 identifierStart :: Stream s Identity Char => Parser s Char r
 identifierStart = letter <|> oneOf "$_"
 
+commentStart = "/*"
+commentEnd = "*/"
+
+-- Character that differentiates an annotation comment from a regular comment.
+-- I.e. "/*: ... */" from "/* ... */"
+annotChar = ':'
+
 javascriptDef :: Stream s Identity Char =>T.GenLanguageDef s (ParserState s r) Identity
 javascriptDef =
-  T.LanguageDef "/*"
-                "*/"
-                annotId -- Character that differentiates an annotation comment from a regular comment.
-                        -- I.e. "/*: ... */" from "/* ... */"
+  T.LanguageDef commentStart
+                commentEnd
+                annotChar
                 "//"
                 False -- no nested comments
                 identifierStart
@@ -102,3 +104,6 @@ brackets :: Stream s Identity Char =>  Parser s a r ->  Parser s a r
 brackets = T.brackets lex
 lexeme :: Stream s Identity Char =>  Parser s a r ->  Parser s a r
 lexeme = T.lexeme lex
+
+noCommentEnd :: Stream s Identity Char => Parser s (Maybe a) r
+noCommentEnd =  parsecMap (const Nothing) (skipMany $ noneOf commentEnd)

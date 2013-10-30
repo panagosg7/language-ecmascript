@@ -3,12 +3,14 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 module Language.ECMAScript3.Parser
   (parse
-  {-, parseScriptFromString-}
+  , parseScriptFromString
   , parseJavaScriptFromFile
-  , parseJavaScriptFromFileFst
+  -- Parser that accepts a parser as argument for 
+  -- parts of the code that get annotations:
+  , parseJavaScriptFromFile'
   , parseScript
   , parseExpression
-  {-, parseString-}
+  , parseString
   , ParsedStatement
   , ParsedExpression
   , parseSimpleExpr'
@@ -319,8 +321,10 @@ parseVarDecl = do
   p     <- externP <$> getState
   pos   <- getPosition
   id    <- identifier
-  (e,a) <- ( do  reservedOp "=" 
+  (e,a) <- ( do  reservedOp "="
+                 string "/*:" ; whiteSpace
                  a <- p
+                 whiteSpace ; string "*/" ; whiteSpace
                  e <- liftM Just parseExpression
                  return (e,a))
            <|> return (Nothing, Nothing)
@@ -843,19 +847,25 @@ parse :: (Stream s Identity t, Stream s' Identity Char) =>
   -> Either ParseError a
 parse externP p = runParser p (initialParserState externP)
 
--- | Read a JavaScript program from file an parse it into a list of
--- statements
-parseJavaScriptFromFile :: MonadIO m
-                        => Parser String (Maybe r) r -> String -- ^ file name
+-- | Read a JavaScript program from file and parse it into a list of statements. 
+-- Params:
+--  ∙ externP: a parser that will be used at places where annotations will need to
+--    be parsed. At the moment this is just in `VarDeclStmt `.
+--  ∙ fileName: The name of the file to be parsed.
+parseJavaScriptFromFile' :: MonadIO m
+                        => Parser String (Maybe r) r -- ^ externP
+                        -> String                   -- ^ file name
                         -> m [Statement (SourceSpan, Maybe r)]
-parseJavaScriptFromFile externP filename = do
+parseJavaScriptFromFile' externP filename = do
   chars <- liftIO $ readFile filename
   case parse externP parseScript filename chars of
     Left err               -> fail (show err)
     Right (Script _ stmts) -> return stmts
 
--- A version where we don't care about the annotations.
-parseJavaScriptFromFileFst f = map (fmap fst) <$> parseJavaScriptFromFile parserZero f 
+-- | Read a JavaScript program from file and parse it into a list of
+-- statements. No external parsers will be used.
+parseJavaScriptFromFile f = 
+  map (fmap fst) <$> parseJavaScriptFromFile' Lexer.noCommentEnd f 
 
 -- | Parse a JavaScript program from a string
 parseScriptFromString ::
@@ -864,7 +874,6 @@ parseScriptFromString ::
   -> SourceName
   -> s
   -> Either ParseError (JavaScript (SourceSpan, Maybe r))
-  	-- Defined at language-ecmascript/src/Language/ECMAScript3/Parser.hs:863:1
 parseScriptFromString externP = parse externP parseScript
 
 -- | Parse a JavaScript source string into a list of statements
