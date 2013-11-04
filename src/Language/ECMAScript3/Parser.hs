@@ -318,18 +318,21 @@ parseWithStmt = do
 
 parseVarDecl :: Stream s Identity Char => Parser s (VarDecl (SourceSpan, Maybe r)) r
 parseVarDecl = do
-  p     <- externP <$> getState
-  pos   <- getPosition
-  id    <- identifier
-  (e,a) <- ( do  reservedOp "="
-                 string "/*:" ; whiteSpace
-                 a <- p
-                 whiteSpace ; string "*/" ; whiteSpace
-                 e <- liftM Just parseExpression
-                 return (e,a))
-           <|> return (Nothing, Nothing)
-  pos' <- getPosition
-  return (VarDecl (Span pos pos', a) id e)
+    p     <- externP <$> getState
+    pos   <- getPosition
+    id    <- identifier
+    (e,a) <-      try (do reservedOp "="
+                          a <- option Nothing 
+                                (do string "/*:" ; whiteSpace; a <- p
+                                    whiteSpace ; string "*/" ; 
+                                    whiteSpace; return a)
+                          e <- parseExpression
+                          return (Just e, a))
+              <|> return (Nothing, Nothing)
+    pos' <- getPosition
+    return (VarDecl (Span pos pos', a) id e)
+  where 
+    mapSnd f (a,b) = (a,f b)
 
 parseVarDeclStmt:: Stream s Identity Char => StatementParser s r
 parseVarDeclStmt = do 
@@ -407,7 +410,18 @@ parseVarRef:: Stream s Identity Char => ExpressionParser s r
 parseVarRef = withSpan VarRef identifier 
 
 parseArrayLit:: Stream s Identity Char => ExpressionParser s r
-parseArrayLit = withSpan ArrayLit (squares (parseExpression `sepEndBy` comma))
+parseArrayLit = do 
+    p    <- externP <$> getState
+    pos  <- getPosition
+    a    <- option Nothing 
+            (do string "/*:"; whiteSpace; a <- p
+                whiteSpace; string "*/";
+                whiteSpace; return a)
+    e <- squares (parseExpression `sepEndBy` comma)
+    pos' <- getPosition
+    return $ ArrayLit (Span pos pos', a) e
+  
+--  parseArrayLit = ArrayLit (squares (parseExpression `sepEndBy` comma))
 
 parseFuncExpr :: Stream s Identity Char => ExpressionParser s r
 parseFuncExpr = do
