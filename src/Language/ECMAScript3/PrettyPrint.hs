@@ -403,9 +403,10 @@ ppListExpression hasIn e = case e of
 
 -- PV Adding new levels for Casts
 ppExpression :: Bool -> Expression a -> Doc
-ppExpression hasIn e = case e of
-  Cast _ e  ->  text "Cast" <> (parens $ ppExpression False e)
-  _         -> ppListExpression hasIn e
+ppExpression = ppListExpression
+-- ppExpression hasIn e = case e of
+--   Cast _ e  ->  text "Cast" <> (parens $ ppExpression False e)
+--   _         -> ppListExpression hasIn e
 
 maybe :: Maybe a -> (a -> Doc) -> Doc
 maybe Nothing  _ = empty

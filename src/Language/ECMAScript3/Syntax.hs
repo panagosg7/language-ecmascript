@@ -158,7 +158,8 @@ data Expression a
   | FuncExpr a (Maybe (Id a)) [Id a] [Statement a]
     -- ^ @function f (x,y,z) {...}@, spec 11.2.5, 13
   -- PV adding cast expression, the casted type will be in the annotation a
-  | Cast a (Expression a)
+  
+  --  | Cast a (Expression a)
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
 
 -- | Case clauses, spec 12.11
