@@ -171,7 +171,7 @@ instance Arbitrary a => Arbitrary (Expression a) where
   shrink (ListExpr a es) = (cshrink es) ++ es ++ [ListExpr na nes | na <- shrink a, nes <- shrink es]
   shrink (CallExpr a e es) = (shrink e) ++ [e] ++ (cshrink es) ++ es ++ [CallExpr na ne nes | na <- shrink a, ne <- shrink e, nes <- shrink es]
   shrink (FuncExpr a mid ids s) = [FuncExpr na nmid nids ns | na <- shrink a, nmid <-  shrink mid, nids <- shrink ids, ns <- shrink s]
-  -- shrink (Cast a e) = (shrink e) ++ [e] ++ [Cast na ne | na <- shrink a, ne <- shrink e]
+  shrink (Cast a e) = (shrink e) ++ [e] ++ [Cast na ne | na <- shrink a, ne <- shrink e]
 
 instance Arbitrary a => Arbitrary (ForInInit a) where
   arbitrary = oneof [liftM ForInVar arbitrary,
