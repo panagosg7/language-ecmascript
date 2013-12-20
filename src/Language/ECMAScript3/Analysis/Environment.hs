@@ -76,9 +76,7 @@ expr e = case e of
   CallExpr _ e es -> unions [expr e, unions $ map expr es]
   FuncExpr _ _ args ss -> nest $ unions [unions $ map decl args
                                         ,unions $ map stmt ss]
-  DownCast _ e -> expr e
-  UpCast _ e -> expr e
-  DeadCast _ e -> expr e
+  Cast _ e -> expr e
 
 caseClause :: CaseClause SourcePos -> Partial
 caseClause cc = case cc of
