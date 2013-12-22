@@ -92,9 +92,19 @@ withFreshLabelStack p = do oldState <- getState
                            putState oldState
                            return a
 
-identifier :: Stream s Identity Char => Parser s (Id (SourceSpan, Maybe r)) r
+identifier :: Stream s Identity Char => Parser s (IdT r) r
 identifier = withSpan Id Lexer.identifier 
   -- liftM2 Id getPosition Lexer.identifier
+
+-- | Aliases for external parser types
+type ExprT a    = Expression (SourceSpan, Maybe a)
+type IdT a      = Id (SourceSpan, Maybe a)
+type StmtT a    = Statement (SourceSpan, Maybe a)
+type VardT a    = VarDecl (SourceSpan, Maybe a)
+type LvalT a    = LValue (SourceSpan, Maybe a)
+type JScriptT a = JavaScript (SourceSpan, Maybe a)
+
+
 
 --{{{ Statements
 
@@ -316,7 +326,7 @@ parseWithStmt = do
   pos' <- getPosition
   return (WithStmt (Span pos pos', Nothing) context stmt)
 
-parseVarDecl :: Stream s Identity Char => Parser s (VarDecl (SourceSpan, Maybe r)) r
+parseVarDecl :: Stream s Identity Char => Parser s (VardT r) r
 parseVarDecl = do
     p     <- externP <$> getState
     pos   <- getPosition
@@ -671,9 +681,6 @@ parseSimpleExprForNew Nothing = do
 --}}}
 
 makeInfixExpr str constr = Infix parser AssocLeft where
-  parser:: Stream s Identity Char
-        => Parser s (Expression (SourceSpan, Maybe r) 
-        -> Expression (SourceSpan, Maybe r) -> Expression (SourceSpan, Maybe r)) r
   parser = do
     pos <- getPosition
     reservedOp str
@@ -737,17 +744,14 @@ parseExpression' :: Stream s Identity Char => ExpressionParser s r
 parseExpression' = 
   buildExpressionParser exprTable parsePrefixedExpr <?> "simple expression"
 
-asLValue :: Stream s Identity Char
-         => SourcePos
-         -> Expression (SourceSpan, Maybe r)
-         -> Parser s (LValue (SourceSpan, Maybe r)) r
+asLValue :: Stream s Identity Char => SourcePos -> ExprT r -> Parser s (LvalT r) r
 asLValue p' e = case e of
   VarRef p (Id _ x) -> return (LVar p x)
   DotRef p e (Id _ x) -> return (LDot p e x)
   BracketRef p e1 e2 -> return (LBracket p e1 e2)
   otherwise -> fail $ "expected a left-value at " ++ show p'
 
-lvalue :: Stream s Identity Char => Parser s (LValue (SourceSpan, Maybe r)) r 
+lvalue :: Stream s Identity Char => Parser s (LvalT r) r
 lvalue = do
   p <- getPosition
   e <- parseSimpleExpr Nothing
@@ -758,7 +762,7 @@ unaryAssignExpr = do
     p <- getPosition
     prefixInc p <|> prefixDec p <|> other p
 
-prefixInc :: Stream s Identity Char => SourcePos -> ParsecT s (ParserState s a) Identity (Expression (SourceSpan, Maybe a))
+prefixInc :: Stream s Identity Char => SourcePos -> ParsecT s (ParserState s a) Identity (ExprT a)
 prefixInc p = do
     reservedOp "++"
     liftM2 (\x p' -> UnaryAssignExpr (Span p p', Nothing) PrefixInc x) lvalue getPosition
@@ -769,19 +773,18 @@ postfixDec e p = do
     reservedOp "--"
     liftM2 (\x p' -> UnaryAssignExpr (Span p p', Nothing) PostfixDec x) (asLValue p e) getPosition
 
-other :: Stream s Identity Char => SourcePos -> ParsecT s (ParserState s a) Identity (Expression (SourceSpan, Maybe a))
+other :: Stream s Identity Char => SourcePos -> ParsecT s (ParserState s a) Identity (ExprT a)
 other p = do
     e <- parseSimpleExpr Nothing
     postfixInc e p <|> postfixDec e p <|> return e
 
-prefixDec :: Stream s Identity Char => SourcePos -> ParsecT s (ParserState s a) Identity (Expression (SourceSpan, Maybe a))
+prefixDec :: Stream s Identity Char => SourcePos -> ParsecT s (ParserState s a) Identity (ExprT a)
 prefixDec p = do
     reservedOp "--"
     liftM2 (\x p' -> UnaryAssignExpr (Span p p', Nothing) PrefixDec x) lvalue getPosition
 
 
-parseTernaryExpr':: Stream s Identity Char
-                 => Parser s (ParsedExpression r, ParsedExpression r) r
+parseTernaryExpr':: Stream s Identity Char => Parser s (ParsedExpression r, ParsedExpression r) r
 parseTernaryExpr' = do
     reservedOp "?"
     l <- assignExpr
@@ -844,7 +847,7 @@ parseListExpr
 
 
 
-parseScript:: Stream s Identity Char => Parser s (JavaScript (SourceSpan, Maybe r)) r
+parseScript:: Stream s Identity Char => Parser s (JScriptT r) r
 parseScript = do
   whiteSpace
   withSpan Script (parseStatement `sepBy` whiteSpace)
@@ -852,24 +855,25 @@ parseScript = do
 -- | Parse from a stream; same as 'Text.Parsec.parse'
 
 -- NOTE: This only compiles if the external parser and the current parser are
--- working of separate streams.
-parse :: (Stream s Identity t, Stream s' Identity Char) =>
-  Parser s' (Maybe r) r             -- ^ External parser
-  -> Parsec s (ParserState s' r) a  -- ^ The parser to use
-  -> SourceName                     -- ^ Name of the source file
-  -> s                              -- ^ The stream to parse (string) 
-  -> Either ParseError a
+-- working on separate streams.
+-- parse :: (Stream s Identity t, Stream s' Identity Char) =>
+--   Parser s' (Maybe r) r             -- ^ External parser
+--   -> Parsec s (ParserState s' r) a  -- ^ The parser to use
+--   -> SourceName                     -- ^ Name of the source file
+--   -> s                              -- ^ The stream to parse (string) 
+--   -> Either ParseError a
 parse externP p = runParser p (initialParserState externP)
 
 -- | Read a JavaScript program from file and parse it into a list of statements. 
+
 -- Params:
 --  ∙ externP: a parser that will be used at places where annotations will need to
 --    be parsed. At the moment this is just in `VarDeclStmt `.
 --  ∙ fileName: The name of the file to be parsed.
 parseJavaScriptFromFile' :: MonadIO m
                         => Parser String (Maybe r) r -- ^ externP
-                        -> String                   -- ^ file name
-                        -> m [Statement (SourceSpan, Maybe r)]
+                        -> String                    -- ^ file name
+                        -> m [StmtT r]
 parseJavaScriptFromFile' externP filename = do
   chars <- liftIO $ readFile filename
   case parse externP parseScript filename chars of
@@ -884,15 +888,11 @@ parseJavaScriptFromFile f =
 -- | Parse a JavaScript program from a string
 parseScriptFromString ::
   Stream s Identity Char =>
-  Parser s (Maybe r) r
-  -> SourceName
-  -> s
-  -> Either ParseError (JavaScript (SourceSpan, Maybe r))
+  Parser s (Maybe r) r -> SourceName -> s -> Either ParseError (JScriptT r)
 parseScriptFromString externP = parse externP parseScript
 
 -- | Parse a JavaScript source string into a list of statements
-parseString :: Stream s Identity Char =>
-  Parser s (Maybe r) r -> s -> [Statement (SourceSpan, Maybe r)]
+parseString :: Stream s Identity Char => Parser s (Maybe r) r -> s -> [StmtT r]
 parseString externP str = case parse externP parseScript "" str of
   Left err -> error (show err)
   Right (Script _ stmts) -> stmts
