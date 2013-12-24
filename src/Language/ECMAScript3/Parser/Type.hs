@@ -42,7 +42,7 @@ data ExternP s t = EP {
   }
 
 data ParserState s t = PST { 
-    extP  :: ExternP s t,
+    extP  :: ParserState s t -> ExternP s t,
     store :: M.HashMap SourceSpan t,
     labs  :: [String] 
   } 

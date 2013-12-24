@@ -57,7 +57,7 @@ type StatementParser s t = Parser s t ParsedStatement
 type ExpressionParser s t = Parser s t ParsedExpression
 
 
-initialParserState :: Stream s Identity Char => ExternP s t -> ParserState s t
+initialParserState :: Stream s Identity Char => (ParserState s t -> ExternP s t) -> ParserState s t
 initialParserState p = PST p M.empty []
 
 
@@ -316,21 +316,25 @@ parseWithStmt = do
 
 parseVarDecl :: Stream s Identity Char => Parser s t (VarDecl SourceSpan) 
 parseVarDecl = do
-    st    <- getState
-    p     <- typeP <$> extP <$> getState
     pos   <- getPosition
     id    <- identifier
-    to    <- (do {  string "/*:";
-                    whiteSpace;
-                    a <- p;
-                    whiteSpace;
-                    string "*/";
-                    whiteSpace;
-                    return $ Just a })
+    to    <- (do string "/*:"
+                 whiteSpace
+                 -- Need the state s to be passed to the external parser so 
+                 -- that it is returned as is !!!
+                 s@(PST e _ _) <- getState
+                 let pp = typeP (e s)
+                 a <- pp
+
+                 whiteSpace
+                 string "*/"
+                 whiteSpace
+                 return $ Just a )
               <|> return Nothing
     init  <- (reservedOp "=" >> liftM Just parseExpression) <|> return Nothing
     pos' <- getPosition
     let span  = Span pos pos'
+    st    <- getState
     putState $ st { store = upd span to (store st) }
     return (VarDecl span id init)
   where 
@@ -348,7 +352,6 @@ parseVarDeclStmt = do
 
 parseFunctionStmt:: Stream s Identity Char => StatementParser s t
 parseFunctionStmt = do
-  p   <- funSigP <$> extP <$> getState
   ------
   {-string "/*@"-}
   {-whiteSpace-}
@@ -422,7 +425,7 @@ parseVarRef = withSpan VarRef identifier
 
 parseArrayLit:: Stream s Identity Char => ExpressionParser s t
 parseArrayLit = do 
-    p    <- typeP <$> extP <$> getState
+    {-p    <- typeP <$> extP <$> getState-}
     pos  <- getPosition
     {-a    <- do string "/*:"; whiteSpace; a <- p-}
     {-            whiteSpace; string "*/";-}
@@ -851,12 +854,6 @@ parseScript = do
 
 -- NOTE: This only compiles if the external parser and the current parser are
 -- working on separate streams.
--- parse :: (Stream s Identity t, Stream s' Identity Char) =>
---   Parser s t' (Maybe r) r             -- ^ External parser
---   -> Parsec s (ParserState s' r) a  -- ^ The parser to use
---   -> SourceName                     -- ^ Name of the source file
---   -> s                              -- ^ The stream to parse (string) 
---   -> Either ParseError a
 parse externP p = runParser pp (initialParserState externP)
   where 
     pp = do { a <- p;
@@ -871,7 +868,8 @@ parse externP p = runParser pp (initialParserState externP)
 --    be parsed. At the moment this is just in `VarDeclStmt `.
 --  ∙ fileName: The name of the file to be parsed.
 parseJavaScriptFromFile' :: MonadIO m =>
-  ExternP String t -> FilePath -> m ([Statement SourceSpan], M.HashMap SourceSpan t)
+  (ParserState String t -> ExternP String t) -> FilePath -> m ([Statement SourceSpan], M.HashMap SourceSpan t)
+  	-- Defined at language-ecmascript/src/Language/ECMAScript3/Parser.hs:878:1
 parseJavaScriptFromFile' externP filename = do
   chars <- liftIO $ readFile filename
   case parse externP parseScript filename chars of
@@ -889,11 +887,12 @@ parseJavaScriptFromFile f =
 -- | Parse a JavaScript program from a string
 
 parseScriptFromString :: Stream s Identity Char =>
-  ExternP s t -> SourceName -> s -> Either ParseError (JavaScript SourceSpan, M.HashMap SourceSpan t)
+  (ParserState s t -> ExternP s t) -> SourceName -> s -> 
+    Either ParseError (JavaScript SourceSpan, M.HashMap SourceSpan t)
 parseScriptFromString externP u s = parse externP parseScript u s
 
 -- | Parse a JavaScript source string into a list of statements
-parseString :: Stream s Identity Char => ExternP s t -> s -> [Statement SourceSpan]
+parseString :: Stream s Identity Char => (ParserState s t -> ExternP s t) -> s -> [Statement SourceSpan]
 parseString externP str = case parse externP parseScript "" str of
   Left err                    -> error (show err)
   Right (Script _ stmts, _ )  -> stmts
