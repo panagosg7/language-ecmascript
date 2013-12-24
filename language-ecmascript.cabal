@@ -44,7 +44,9 @@ Library
     data-default >= 0.4 && <0.6,
     QuickCheck >= 2.5,
     template-haskell,
-    charset >= 0.3.2.1
+    charset >= 0.3.2.1,
+    unordered-containers,
+    hashable
   ghc-options:
     -fwarn-incomplete-patterns
   Exposed-Modules:
