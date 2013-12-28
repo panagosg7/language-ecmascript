@@ -82,7 +82,7 @@ withFreshLabelStack :: Parser s t a -> Parser s t a
 withFreshLabelStack p = do oldState <- getState
                            putState $ clearLabels oldState
                            a <- p
-                           putState oldState
+                           modifyState (\s -> s { labs = labs oldState })
                            return a
 
 identifier :: Stream s Identity Char => Parser s t (Id SourceSpan)
@@ -346,21 +346,41 @@ parseVarDeclStmt = do
 
 parseFunctionStmt:: Stream s Identity Char => StatementParser s t
 parseFunctionStmt = do
-  ------
-  {-string "/*@"-}
-  {-whiteSpace-}
-  {-a <- p-}
-  {-whiteSpace-}
-  {-string "*/"  -}
-  ------
-  pos <- getPosition  
-  name <- try (reserved "function" >> identifier) -- ambiguity with FuncExpr
-  args <- parens (identifier `sepBy` comma)
-  -- label sets don't cross function boundaries
-  BlockStmt _ body <- withFreshLabelStack parseBlockStmt <?> 
-                      "function body in { ... }"
-  pos' <- getPosition
-  return (FunctionStmt (Span pos pos') name args body)
+    s@(PST e _ _) <- getState
+
+    pos0 <- getPosition
+    let (EP tP fP _) = e s
+    a <- (try fP) <|> tP
+    -- try either the type or the function signature parser
+
+    pos  <- getPosition
+    name <- try (reserved "function" >> identifier) -- ambiguity with FuncExpr
+    args <- parens (identifier `sepBy` comma)
+    -- label sets don't cross function boundaries
+    BlockStmt _ body <- withFreshLabelStack parseBlockStmt <?> 
+                        "function body in { ... }"
+    pos' <- getPosition
+    let span  = Span pos pos'
+    PST e s l <- getState
+    putState $ PST e (upd span (Just a) s) l
+    return (FunctionStmt span name args body)
+  where 
+    upd span (Just t) s = M.insert span t s
+    upd _ _ s = s
+
+
+parseTopLevel :: ParsecT s (ParserState s t) Identity (Maybe a)
+parseTopLevel = do
+    st@(PST e s l) <- getState
+    pos     <- getPosition
+    a       <- topLevelP (e st)
+    pos'    <- getPosition
+    let span = Span pos pos'
+    putState $ PST e (upd span a s) l
+    return   $ Nothing
+  where
+    upd span t s = M.insert span t s
+
 
 parseStatement:: Stream s Identity Char => StatementParser s t
 parseStatement = parseIfStmt <|> parseSwitchStmt <|> parseWhileStmt 
@@ -654,7 +674,7 @@ parseNewExpr =
   parseSimpleExpr'
 
 
--- parseSimpleExpr :: Stream s Identity Char => Maybe (Expression (SourceSpan, Maybe r)) -> ExpressionParser s t
+parseSimpleExpr :: Stream s Identity Char => Maybe (Expression SourceSpan) -> ExpressionParser s t
 parseSimpleExpr (Just e) = ((dotRef e <|> funcApp e <|> bracketRef e) >>=
                             parseSimpleExpr . Just)  
                         <|> return e
@@ -668,7 +688,7 @@ parseSimpleExprForNew (Just e) = ((dotRef e <|> bracketRef e) >>=
                                   parseSimpleExprForNew . Just)
                               <|> return e
 parseSimpleExprForNew Nothing = do
-  e <- parseNewExpr <?> "expression (3)"
+  e <- parseNewExpr <?> "expression (4)"
   parseSimpleExprForNew (Just e)
     
 --}}}
@@ -842,7 +862,9 @@ parseListExpr
 parseScript:: Stream s Identity Char => Parser s t (JavaScript SourceSpan)
 parseScript = do
   whiteSpace
-  withSpan Script (parseStatement `sepBy` whiteSpace)
+  -- NOTE: Parse top-level annotations only at the script top-level, but yield
+  -- no expression for them.
+  withSpan Script $ catMaybes <$> (((try parseTopLevel) <|> (Just <$> parseStatement)) `sepBy` whiteSpace)
   
 -- | Parse from a stream; same as 'Text.Parsec.parse'
 
