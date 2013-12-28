@@ -39,7 +39,7 @@ import Control.Applicative ((<$>))
 import Numeric(readDec,readOct,readHex)
 import Data.Char
 import Control.Monad.Identity
-import Data.Maybe (isJust, isNothing, fromMaybe)
+import Data.Maybe (isJust, isNothing, fromMaybe, catMaybes)
 import Data.Typeable
 import Data.Generics hiding (Infix)
 import qualified Data.HashMap.Strict as M
