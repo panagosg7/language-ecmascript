@@ -37,8 +37,9 @@ type Parser s t a = ParsecT s (ParserState s t) Identity a
 -- | External parser
 
 data ExternP s t = EP {
-    typeP   :: Parser s t t,    -- A parser for type annotation
-    funSigP :: Parser s t t     -- A parser for function signatures
+    typeP     :: Parser s t t,    -- A parser for type annotation
+    funSigP   :: Parser s t t,    -- A parser for function signatures
+    topLevelP :: Parser s t t     -- A parser for top-level annotations
   }
 
 data ParserState s t = PST { 
