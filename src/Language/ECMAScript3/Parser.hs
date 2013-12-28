@@ -318,17 +318,11 @@ parseVarDecl :: Stream s Identity Char => Parser s t (VarDecl SourceSpan)
 parseVarDecl = do
     pos   <- getPosition
     id    <- identifier
-    to    <- (do string "/*:"
-                 whiteSpace
-                 -- Need the state s to be passed to the external parser so 
+    to    <- (do -- Need the state s to be passed to the external parser so 
                  -- that it is returned as is !!!
                  s@(PST e _ _) <- getState
                  let pp = typeP (e s)
                  a <- pp
-
-                 whiteSpace
-                 string "*/"
-                 whiteSpace
                  return $ Just a )
               <|> return Nothing
     init  <- (reservedOp "=" >> liftM Just parseExpression) <|> return Nothing
@@ -869,7 +863,6 @@ parse externP p = runParser pp (initialParserState externP)
 --  ∙ fileName: The name of the file to be parsed.
 parseJavaScriptFromFile' :: MonadIO m =>
   (ParserState String t -> ExternP String t) -> FilePath -> m ([Statement SourceSpan], M.HashMap SourceSpan t)
-  	-- Defined at language-ecmascript/src/Language/ECMAScript3/Parser.hs:878:1
 parseJavaScriptFromFile' externP filename = do
   chars <- liftIO $ readFile filename
   case parse externP parseScript filename chars of
