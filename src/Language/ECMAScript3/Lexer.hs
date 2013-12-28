@@ -25,9 +25,11 @@ identifierStart = letter <|> oneOf "$_"
 commentStart = "/*"
 commentEnd = "*/"
 
+-- | Define the type of comment that should not be ignored by the parser.
+
 -- Character that differentiates an annotation comment from a regular comment.
--- I.e. "/*: ... */" from "/* ... */"
-annotChar = ':'
+-- I.e. "/*@ ... */" from "/* ... */"
+annotChar = '@'
 
 javascriptDef :: Stream s Identity Char =>T.GenLanguageDef s (ParserState s t) Identity
 javascriptDef =
