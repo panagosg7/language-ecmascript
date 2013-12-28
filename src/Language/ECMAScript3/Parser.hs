@@ -329,7 +329,7 @@ parseVarDecl = do
     pos' <- getPosition
     let span  = Span pos pos'
     st    <- getState
-    putState $ st { store = upd span to (store st) }
+    putState $ st { store = upd (getAnnotation id) to (store st) }
     return (VarDecl span id init)
   where 
     upd span (Just t) s = M.insert span t s
