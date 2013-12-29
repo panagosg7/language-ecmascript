@@ -894,10 +894,10 @@ parseJavaScriptFromFile' externP filename = do
 -- | Read a JavaScript program from file and parse it into a list of
 -- statements. No external parsers will be used.
 
-parseJavaScriptFromFile :: MonadIO m =>
-  FilePath -> m ([Statement SourceSpan], M.HashMap SourceSpan t)
-parseJavaScriptFromFile f = 
-  parseJavaScriptFromFile' undefined {- Lexer.noCommentEnd -} f 
+parseJavaScriptFromFile :: MonadIO m => FilePath -> m [Statement SourceSpan]
+parseJavaScriptFromFile f =liftM fst $ parseJavaScriptFromFile' (\_ -> EP z z z) f
+  where    
+    z = parserZero
 
 -- | Parse a JavaScript program from a string
 
