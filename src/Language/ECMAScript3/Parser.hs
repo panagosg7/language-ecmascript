@@ -314,73 +314,78 @@ parseWithStmt = do
   pos' <- getPosition
   return (WithStmt (Span pos pos') context stmt)
 
+getExtP :: Stream s Identity Char => Parser s t (ExternP s t)
+getExtP             = getState >>= \s@(PST e _ _) -> return (e s)
+
+inAnnotP :: Stream s Identity Char => Parser s t a -> Parser s t a
+inAnnotP p = do string "/*@"  >> whiteSpace
+                t <- p
+                whiteSpace    >> string "*/" >> whiteSpace
+                return t
+
 parseVarDecl :: Stream s Identity Char => Parser s t (VarDecl SourceSpan) 
 parseVarDecl = do
-    pos   <- getPosition
-    id    <- identifier
-    to    <- (do -- Need the state s to be passed to the external parser so 
-                 -- that it is returned as is !!!
-                 s@(PST e _ _) <- getState
-                 let pp = typeP (e s)
-                 a <- pp
-                 return $ Just a )
-              <|> return Nothing
-    init  <- (reservedOp "=" >> liftM Just parseExpression) <|> return Nothing
-    pos' <- getPosition
-    let span  = Span pos pos'
-    st    <- getState
-    putState $ st { store = upd (getAnnotation id) to (store st) }
-    return (VarDecl span id init)
+    pos           <- getPosition
+    id            <- identifier
+    ot2           <- optionMaybe . inAnnotP . typeP =<< getExtP
+    init          <- (reservedOp "=" >> liftM Just parseExpression) <|> return Nothing
+    pos'          <- getPosition
+    let span       = Span pos pos'
+
+    modifyState    $ \s -> s { store = upd (getAnnotation id) ot2 (store s) }
+    return         $ VarDecl span id init
   where 
-    upd span (Just t) s = M.insert span t s
-    upd _ _ s = s
+    upd span (Just t) s = M.insert span [t] s
+    upd _ _ s           = s
 
 parseVarDeclStmt:: Stream s Identity Char => StatementParser s t
 parseVarDeclStmt = do 
-  pos <- getPosition
-  reserved "var"
-  decls <- parseVarDecl `sepBy` comma
-  optional semi
-  pos' <- getPosition
-  return (VarDeclStmt (Span pos pos') decls)
+    try (do ot          <- optionMaybe . inAnnotP . (`sepBy` comma) . bTypeP =<< getExtP
+            pos         <- getPosition
+            reserved "var"
+            decls       <- parseVarDecl `sepBy` comma
+            optional semi
+            pos'        <- getPosition
+            let span     = Span pos pos'
+            modifyState  $ \s -> s { store = upds span ot (store s) }
+            return       $ VarDeclStmt span decls)
+  where
+    upds span (Just t) s = M.insert span t s
+    upds _ _ s           = s
+    ss (Just tt) = show $ length tt
+    ss _         = "0"
 
 parseFunctionStmt:: Stream s Identity Char => StatementParser s t
 parseFunctionStmt = do
-    s@(PST e _ _) <- getState
-
-    pos0 <- getPosition
-    let (EP tP fP _) = e s
-    a <- (try fP) <|> tP
-    -- try either the type or the function signature parser
-
-    pos  <- getPosition
-    name <- try (reserved "function" >> identifier) -- ambiguity with FuncExpr
-    args <- parens (identifier `sepBy` comma)
-    -- label sets don't cross function boundaries
-    BlockStmt _ body <- withFreshLabelStack parseBlockStmt <?> 
-                        "function body in { ... }"
-    pos' <- getPosition
-    let span  = Span pos pos'
-    PST e s l <- getState
-    putState $ PST e (upd span (Just a) s) l
-    return (FunctionStmt span name args body)
+    try (do s@(PST e _ _) <- getState
+            let (EP tP fP _) = e s
+            a <- inAnnotP ((try fP) <|> tP)
+            pos  <- getPosition
+            name <- try (reserved "function" >> identifier) -- ambiguity with FuncExpr
+            args <- parens (identifier `sepBy` comma)
+            -- label sets don't cross function boundaries
+            BlockStmt _ body <- withFreshLabelStack parseBlockStmt <?> 
+                                "function body in { ... }"
+            pos' <- getPosition
+            let span  = Span pos pos'
+            PST e s l <- getState
+            putState $ PST e (upd span (Just a) s) l
+            return (FunctionStmt span name args body))
   where 
-    upd span (Just t) s = M.insert span t s
+    upd span (Just t) s = M.insert span [t] s
     upd _ _ s = s
 
-
-parseTopLevel :: ParsecT s (ParserState s t) Identity (Maybe a)
+parseTopLevel :: Stream s Identity Char => ParsecT s (ParserState s t) Identity (Maybe a)
 parseTopLevel = do
     st@(PST e s l) <- getState
     pos     <- getPosition
-    a       <- topLevelP (e st)
+    a       <- inAnnotP . topLevelP =<< getExtP
     pos'    <- getPosition
     let span = Span pos pos'
     putState $ PST e (upd span a s) l
     return   $ Nothing
   where
-    upd span t s = M.insert span t s
-
+    upd span t s = M.insert span [t] s
 
 parseStatement:: Stream s Identity Char => StatementParser s t
 parseStatement = parseIfStmt <|> parseSwitchStmt <|> parseWhileStmt 
@@ -884,7 +889,7 @@ parse externP p = runParser pp (initialParserState externP)
 --    be parsed. At the moment this is just in `VarDeclStmt `.
 --  ∙ fileName: The name of the file to be parsed.
 parseJavaScriptFromFile' :: MonadIO m =>
-  (ParserState String t -> ExternP String t) -> FilePath -> m ([Statement SourceSpan], M.HashMap SourceSpan t)
+  (ParserState String t -> ExternP String t) -> FilePath -> m ([Statement SourceSpan], M.HashMap SourceSpan [t])
 parseJavaScriptFromFile' externP filename = do
   chars <- liftIO $ readFile filename
   case parse externP parseScript filename chars of
@@ -903,7 +908,7 @@ parseJavaScriptFromFile f =liftM fst $ parseJavaScriptFromFile' (\_ -> EP z z z)
 
 parseScriptFromString :: Stream s Identity Char =>
   (ParserState s t -> ExternP s t) -> SourceName -> s -> 
-    Either ParseError (JavaScript SourceSpan, M.HashMap SourceSpan t)
+    Either ParseError (JavaScript SourceSpan, M.HashMap SourceSpan [t])
 parseScriptFromString externP u s = parse externP parseScript u s
 
 -- | Parse a JavaScript source string into a list of statements

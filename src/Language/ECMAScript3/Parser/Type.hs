@@ -38,12 +38,12 @@ type Parser s t a = ParsecT s (ParserState s t) Identity a
 
 data ExternP s t = EP {
     typeP     :: Parser s t t,    -- ^ parser for type annotations
-    funSigP   :: Parser s t t,    -- ^ parser for function signatures
+    bTypeP    :: Parser s t t,    -- ^ parser for function signatures
     topLevelP :: Parser s t t     -- ^ parser for top-level annotations
   }
 
 data ParserState s t = PST { 
     extP  :: ParserState s t -> ExternP s t,  -- ^ external parsers
-    store :: M.HashMap SourceSpan t,          -- ^ store for annotations
+    store :: M.HashMap SourceSpan [t],        -- ^ store for annotations
     labs  :: [String]                         -- ^ labels
   } 
