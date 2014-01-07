@@ -27,6 +27,12 @@ instance PP (Expression a) where
 instance PP (Statement a) where 
   pp = ppStatement
 
+instance PP (CaseClause a) where
+  pp = caseClause
+
+instance PP [(CaseClause a)] where
+  pp = caseClauseList
+
 instance PP (ForInit a) where 
   pp = forInit 
 
@@ -151,6 +157,9 @@ ppStatement s = case s of
 
 stmtList :: [Statement a] -> Doc
 stmtList = vcat . map ppStatement
+
+caseClauseList :: [CaseClause a] -> Doc
+caseClauseList = vcat . map caseClause
 
 prop :: Prop a -> Doc
 prop p = case p of
