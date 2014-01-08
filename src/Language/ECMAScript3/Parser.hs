@@ -546,7 +546,7 @@ parseRegexpLit = do
                 liftM2 (:) anyChar parseRe
   pos <- getPosition
   char '/'
-  notFollowedBy $ char '/'
+  notFollowedBy $ char '/' <|> char '*'
   pat <- parseRe --many1 parseChar
   flags <- parseFlags
   spaces -- crucial for Parsec.Token parsers
