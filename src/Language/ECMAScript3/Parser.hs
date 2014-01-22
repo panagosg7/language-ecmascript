@@ -358,8 +358,9 @@ parseVarDeclStmt = do
 parseFunctionStmt:: Stream s Identity Char => StatementParser s t
 parseFunctionStmt = do
     try (do s@(PST e _ _) <- getState
-            let (EP tP fP _) = e s
-            a <- inAnnotP ((try fP) <|> tP)
+            let (EP tP fP _ _) = e s
+            {-a <- inAnnotP ((try fP) <|> tP)-}
+            a <- inAnnotP fP
             pos  <- getPosition
             name <- try (reserved "function" >> identifier) -- ambiguity with FuncExpr
             args <- parens (identifier `sepBy` comma)
@@ -900,7 +901,7 @@ parseJavaScriptFromFile' externP filename = do
 -- statements. No external parsers will be used.
 
 parseJavaScriptFromFile :: MonadIO m => FilePath -> m [Statement SourceSpan]
-parseJavaScriptFromFile f =liftM fst $ parseJavaScriptFromFile' (\_ -> EP z z z) f
+parseJavaScriptFromFile f =liftM fst $ parseJavaScriptFromFile' (\_ -> EP z z z z) f
   where    
     z = parserZero
 
