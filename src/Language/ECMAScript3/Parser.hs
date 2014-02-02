@@ -327,6 +327,10 @@ inAnnotP p = do string "/*@"  >> whiteSpace
                 whiteSpace    >> string "*/" >> whiteSpace
                 return t
 
+
+updSpan span (Just t) s = M.insert span [t] s
+updSpan _ _ s = s
+
 parseVarDecl :: Stream s Identity Char => Parser s t (VarDecl SourceSpan) 
 parseVarDecl = do
     pos           <- getPosition
@@ -336,11 +340,8 @@ parseVarDecl = do
     pos'          <- getPosition
     let span       = Span pos pos'
 
-    modifyState    $ \s -> s { store = upd (getAnnotation id) ot2 (store s) }
+    modifyState    $ \s -> s { store = updSpan (getAnnotation id) ot2 (store s) }
     return         $ VarDecl span id init
-  where 
-    upd span (Just t) s = M.insert span [t] s
-    upd _ _ s           = s
 
 parseVarDeclStmt:: Stream s Identity Char => StatementParser s t
 parseVarDeclStmt = do 
@@ -359,46 +360,57 @@ parseVarDeclStmt = do
     ss (Just tt) = show $ length tt
     ss _         = "0"
 
+
 parseFunctionStmt:: Stream s Identity Char => StatementParser s t
 parseFunctionStmt = do
-    try (do s@(PST e _ _) <- getState
-            let (EP tP bfP _ _) = e s
-            {-a <- inAnnotP ((try fP) <|> tP)-}
-            a <- inAnnotP bfP
-            pos  <- getPosition
-            name <- try (reserved "function" >> identifier) -- ambiguity with FuncExpr
-            args <- parens (identifier `sepBy` comma)
+    try (do s@(PST e _ _)     <- getState
+            let (EP _ fP _ _)  = e s
+            a                 <- inAnnotP fP
+            pos               <- getPosition
+            name              <- try (reserved "function" >> identifier)
+            args              <- parens (identifier `sepBy` comma)
             -- label sets don't cross function boundaries
-            BlockStmt _ body <- withFreshLabelStack parseBlockStmt <?> 
-                                "function body in { ... }"
-            pos' <- getPosition
-            let span  = Span pos pos'
-            PST e s l <- getState
-            putState $ PST e (upd span (Just a) s) l
-            return (FunctionStmt span name args body))
-  where 
-    upd span (Just t) s = M.insert span [t] s
-    upd _ _ s = s
+            BlockStmt _ body  <- withFreshLabelStack parseBlockStmt <?> 
+                                 "function body in { ... }"
+            pos'              <- getPosition
+            let span           = Span pos pos'
+            PST e s l         <- getState
+            putState           $ PST e (updSpan span (Just a) s) l
+            return             $ FunctionStmt span name args body)
 
 parseConstructor :: Stream s Identity Char => ClassEltParser s t
 parseConstructor = do
-    try (do s@(PST e _ _) <- getState
-            let (EP tP _ _ _) = e s
-            a <- inAnnotP tP
-            pos  <- getPosition
-            try (reserved "constructor")
-            args <- parens (identifier `sepBy` comma)
-            BlockStmt _ body <- withFreshLabelStack parseBlockStmt <?> 
-                                "constructor body in { ... }"
-            pos' <- getPosition
-            let span  = Span pos pos'
-            PST e s l <- getState
-            putState $ PST e (upd span (Just a) s) l
-            return (Constructor span args body))
-  where 
-    upd span (Just t) s = M.insert span [t] s
-    upd _ _ s = s
+    try (do s@(PST e _ _)     <- getState
+            let (EP tP _ _ _)  = e s
+            a                 <- inAnnotP tP
+            pos               <- getPosition
+            try                $ reserved "constructor"
+            args              <- parens (identifier `sepBy` comma)
+            BlockStmt _ body  <- withFreshLabelStack parseBlockStmt <?> 
+                                 "constructor body in { ... }"
+            pos'              <- getPosition
+            let span           = Span pos pos'
+            PST e s l         <- getState
+            putState           $ PST e (updSpan span (Just a) s) l
+            return             $ Constructor span args body)
 
+parseMemberFuncDecl :: Stream s Identity Char => ClassEltParser s t
+parseMemberFuncDecl = do
+    try (do s@(PST e _ _)     <- getState
+            let (EP _ fP _ _)  = e s
+            a                 <- inAnnotP fP
+            pos               <- getPosition
+            mod               <- try (reserved "public" >> return True) 
+                             <|> try (option False (reserved "private" >> return False))
+            name              <- identifier
+            args              <- parens (identifier `sepBy` comma)
+            BlockStmt _ body  <- withFreshLabelStack parseBlockStmt <?> 
+                                 "method body in { ... }"
+            pos'              <- getPosition
+            let span           = Span pos pos'
+            PST e s l         <- getState
+            putState           $ PST e (updSpan span (Just a) s) l
+            return             $ MemberFuncDecl span mod name args body)
 
 
 parseClassStmt :: Stream s Identity Char => StatementParser s t
@@ -412,10 +424,8 @@ parseClassStmt =
           return (ClassStmt span name t))
 
 parseClassElement :: Stream s Identity Char =>  ClassEltParser s t 
-parseClassElement = parseConstructor -- <|> parseMemberVarDecl <|> parseMemberFuncDecl
+parseClassElement = parseConstructor <|> parseMemberFuncDecl -- <|> parseMemberVarDecl
 
-
-parseMemberFuncDecl = undefined
 
 parseMemberVarDecl = undefined
 
@@ -431,10 +441,8 @@ parseTopLevel = do
     a       <- inAnnotP . topLevelP =<< getExtP
     pos'    <- getPosition
     let span = Span pos pos'
-    putState $ PST e (upd span a s) l
+    putState $ PST e (M.insert span [a] s) l
     return   $ Nothing
-  where
-    upd span t s = M.insert span [t] s
 
 parseStatement:: Stream s Identity Char => StatementParser s t
 parseStatement = parseIfStmt <|> parseSwitchStmt <|> parseWhileStmt 
