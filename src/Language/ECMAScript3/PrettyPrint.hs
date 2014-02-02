@@ -72,10 +72,14 @@ renderExpression = render . (ppExpression True)
 -- Displays the statement in { ... }, unless it is a block itself.
 inBlock:: Statement a -> Doc
 inBlock s@(BlockStmt _ _) = ppStatement s
-inBlock s                 = asBlock [s]
+inBlock s                 = ssAsBlock [s]
 
-asBlock :: [Statement a] -> Doc
-asBlock ss = lbrace $+$ nest 2 (stmtList ss) $$ rbrace
+-- ssAsBlock :: [Statement a] -> Doc
+asBlock f ss = lbrace $+$ nest 2 (f ss) $$ rbrace
+
+ssAsBlock = asBlock stmtList
+
+classEltAsBlock = asBlock classEltList
 
 ppId (Id _ str) = text str
 
@@ -103,7 +107,7 @@ ppVarDecl hasIn vd = case vd of
 
 ppStatement :: Statement a -> Doc
 ppStatement s = case s of
-  BlockStmt _ ss -> asBlock ss
+  BlockStmt _ ss -> ssAsBlock ss
   EmptyStmt _ -> semi
   ExprStmt _ e@(CallExpr _ (FuncExpr {}) _ ) -> 
     parens (ppExpression True e) <> semi
@@ -153,10 +157,25 @@ ppStatement s = case s of
   FunctionStmt _ name args body ->
     text "function" <+> ppId name <> 
     parens (cat $ punctuate comma (map ppId args)) $$ 
-    asBlock body
+    ssAsBlock body
+  ClassStmt _ name body -> 
+    text "class" <+> ppId name $$
+    -- TODO: include type parameters & extends - implements
+    classEltAsBlock body
+
+ppClassElt :: ClassElt a -> Doc
+ppClassElt (Constructor _ args body) = 
+  text "constructor" <>
+  parens (cat $ punctuate comma (map ppId args)) $$ 
+  ssAsBlock body
+ppClassElt (MemberVarDecl _ _ ) = error "UNIMPLEMENTED:ppClassElt:MemberVarDecl"
+ppClassElt (MemberFuncDecl _ _ _ _ _) = error "UNIMPLEMENTED:ppClassElt:MemberFuncDecl"
 
 stmtList :: [Statement a] -> Doc
 stmtList = vcat . map ppStatement
+
+classEltList :: [ClassElt a] -> Doc
+classEltList = vcat . map ppClassElt
 
 caseClauseList :: [CaseClause a] -> Doc
 caseClauseList = vcat . map caseClause
@@ -274,7 +293,7 @@ ppMemberExpression e = case e of
   FuncExpr _ name params body -> 
     text "function" <+> maybe name ppId <+>
     parens (cat $ punctuate comma (map ppId params)) $$ 
-    asBlock body
+    ssAsBlock body
   DotRef _ obj id -> ppMemberExpression obj <> text "." <> ppId id
   BracketRef _ obj key -> 
     ppMemberExpression obj <> brackets (ppExpression True key)  

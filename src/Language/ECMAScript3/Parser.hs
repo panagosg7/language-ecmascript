@@ -49,12 +49,16 @@ import Debug.Trace (trace, traceShow)
 
 
 -- We parameterize the parse tree over source-locations.
-type ParsedStatement = Statement SourceSpan
+type ParsedStatement  = Statement SourceSpan
 type ParsedExpression = Expression SourceSpan
+type ParsedClassElt   = ClassElt SourceSpan
 
 -- These parsers can store some arbitrary state
-type StatementParser s t = Parser s t ParsedStatement
+type StatementParser s t  = Parser s t ParsedStatement
 type ExpressionParser s t = Parser s t ParsedExpression
+type ClassEltParser s t   = Parser s t ParsedClassElt
+
+
 
 
 initialParserState :: Stream s Identity Char => (ParserState s t -> ExternP s t) -> ParserState s t
@@ -358,9 +362,9 @@ parseVarDeclStmt = do
 parseFunctionStmt:: Stream s Identity Char => StatementParser s t
 parseFunctionStmt = do
     try (do s@(PST e _ _) <- getState
-            let (EP tP fP _ _) = e s
+            let (EP tP bfP _ _) = e s
             {-a <- inAnnotP ((try fP) <|> tP)-}
-            a <- inAnnotP fP
+            a <- inAnnotP bfP
             pos  <- getPosition
             name <- try (reserved "function" >> identifier) -- ambiguity with FuncExpr
             args <- parens (identifier `sepBy` comma)
@@ -375,6 +379,50 @@ parseFunctionStmt = do
   where 
     upd span (Just t) s = M.insert span [t] s
     upd _ _ s = s
+
+parseConstructor :: Stream s Identity Char => ClassEltParser s t
+parseConstructor = do
+    try (do s@(PST e _ _) <- getState
+            let (EP tP _ _ _) = e s
+            a <- inAnnotP tP
+            pos  <- getPosition
+            try (reserved "constructor")
+            args <- parens (identifier `sepBy` comma)
+            BlockStmt _ body <- withFreshLabelStack parseBlockStmt <?> 
+                                "constructor body in { ... }"
+            pos' <- getPosition
+            let span  = Span pos pos'
+            PST e s l <- getState
+            putState $ PST e (upd span (Just a) s) l
+            return (Constructor span args body))
+  where 
+    upd span (Just t) s = M.insert span [t] s
+    upd _ _ s = s
+
+
+
+parseClassStmt :: Stream s Identity Char => StatementParser s t
+parseClassStmt = 
+  try (do pos  <- getPosition
+          name <- try (reserved "class" >> identifier)
+          -- TODO: parse type parameters for class, a la generics
+          t <- braces (parseClassElement `sepBy` whiteSpace)
+          pos' <- getPosition
+          let span  = Span pos pos'
+          return (ClassStmt span name t))
+
+parseClassElement :: Stream s Identity Char =>  ClassEltParser s t 
+parseClassElement = parseConstructor -- <|> parseMemberVarDecl <|> parseMemberFuncDecl
+
+
+parseMemberFuncDecl = undefined
+
+parseMemberVarDecl = undefined
+
+
+  
+    
+            
 
 parseTopLevel :: Stream s Identity Char => ParsecT s (ParserState s t) Identity (Maybe a)
 parseTopLevel = do
@@ -393,7 +441,7 @@ parseStatement = parseIfStmt <|> parseSwitchStmt <|> parseWhileStmt
   <|> parseDoWhileStmt <|> parseContinueStmt <|> parseBreakStmt 
   <|> parseBlockStmt <|> parseEmptyStmt <|> parseForInStmt <|> parseForStmt
   <|> parseTryStmt <|> parseThrowStmt <|> parseReturnStmt <|> parseWithStmt 
-  <|> parseVarDeclStmt  <|> parseFunctionStmt
+  <|> parseVarDeclStmt  <|> parseFunctionStmt <|> parseClassStmt
   -- labelled, expression and the error message always go last, in this order
   <|> parseLabelledStmt <|> parseExpressionStmt <?> "statement"
 

@@ -7,6 +7,7 @@
 module Language.ECMAScript3.Syntax (JavaScript(..)
                                    ,unJavaScript
                                    ,Statement(..)
+                                   ,ClassElt(..)
                                    ,isIterationStmt
                                    ,CaseClause(..)
                                    ,CatchClause(..)
@@ -228,7 +229,20 @@ data Statement a
     -- ^ @var x, y=42;@, spec 12.2
   | FunctionStmt a (Id a) {-name-} [Id a] {-args-} [Statement a] {-body-}
     -- ^ @function f(x, y, z) {...}@, spec 13
+  | ClassStmt a (Id a) [ClassElt a]
+    -- ^ @class C /*@ <t1, ...> {...}@
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)  
+
+-- | Class element
+-- http://www.typescriptlang.org/Content/TypeScript%20Language%20Specification.pdf
+-- spec 8.1.2
+data ClassElt a
+  = Constructor a [Id a] {-args-} [Statement a] {-body-}
+  | MemberVarDecl a Bool {-public(true)/private(false)-} 
+  | MemberFuncDecl a Bool {-public(true)/private(false)-} (Id a) [Id a] [Statement a] 
+--  | IndexSignature
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)  
+
 
 -- | Returns 'True' if the statement is an /IterationStatement/
 -- according to spec 12.6.
