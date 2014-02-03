@@ -158,9 +158,14 @@ ppStatement s = case s of
     text "function" <+> ppId name <> 
     parens (cat $ punctuate comma (map ppId args)) $$ 
     ssAsBlock body
-  ClassStmt _ name body -> 
-    text "class" <+> ppId name $$
-    -- TODO: include type parameters & extends - implements
+  ClassStmt _ name ext imp body -> 
+    text "class" <+> ppId name  <+> 
+    ( case ext of 
+        Just e  -> text "extends" <+> ppId e
+        Nothing -> text "") <+>
+    ( case imp of 
+        [] -> text ""
+        is -> text "implements" <+> cat (punctuate comma (map ppId is))) <+>
     classEltAsBlock body
 
 ppClassElt :: ClassElt a -> Doc

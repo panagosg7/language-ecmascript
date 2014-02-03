@@ -428,13 +428,17 @@ parseMemberVarDecl = do
 
 parseClassStmt :: Stream s Identity Char => StatementParser s t
 parseClassStmt = 
-  try (do pos  <- getPosition
-          name <- try (reserved "class" >> identifier)
-          -- TODO: parse type parameters for class, a la generics
-          t <- braces (parseClassElement `sepBy` whiteSpace)
-          pos' <- getPosition
-          let span  = Span pos pos'
-          return (ClassStmt span name t))
+  try (do pos     <- getPosition
+          name    <- try (reserved "class" >> identifier)
+          extends <- optionMaybe (reserved "extends" >> identifier)
+          impls   <- maybeToList <$> optionMaybe (reserved "implements" >> identifier `sepBy` comma)
+          t       <- braces (parseClassElement `sepBy` whiteSpace)
+          pos'    <- getPosition
+          let span = Span pos pos'
+          return   $ ClassStmt span name extends impls t)
+
+maybeToList Nothing   = []
+maybeToList (Just xs) = xs
 
 parseClassElement :: Stream s Identity Char =>  ClassEltParser s t 
 parseClassElement = parseConstructor <|> parseMemberFuncDecl <|> parseMemberVarDecl

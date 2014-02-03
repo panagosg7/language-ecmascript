@@ -229,7 +229,7 @@ data Statement a
     -- ^ @var x, y=42;@, spec 12.2
   | FunctionStmt a (Id a) {-name-} [Id a] {-args-} [Statement a] {-body-}
     -- ^ @function f(x, y, z) {...}@, spec 13
-  | ClassStmt a (Id a) [ClassElt a]
+  | ClassStmt a (Id a) (Maybe (Id a)) {-extends-} [Id a] {-implem-} [ClassElt a]
     -- ^ @class C /*@ <t1, ...> {...}@
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)  
 
