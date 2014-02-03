@@ -363,54 +363,66 @@ parseVarDeclStmt = do
 
 parseFunctionStmt:: Stream s Identity Char => StatementParser s t
 parseFunctionStmt = do
-    try (do s@(PST e _ _)     <- getState
-            let (EP _ fP _ _)  = e s
-            a                 <- inAnnotP fP
-            pos               <- getPosition
-            name              <- try (reserved "function" >> identifier)
-            args              <- parens (identifier `sepBy` comma)
-            -- label sets don't cross function boundaries
-            BlockStmt _ body  <- withFreshLabelStack parseBlockStmt <?> 
-                                 "function body in { ... }"
-            pos'              <- getPosition
-            let span           = Span pos pos'
-            PST e s l         <- getState
-            putState           $ PST e (updSpan span (Just a) s) l
-            return             $ FunctionStmt span name args body)
+  try (do s@(PST e _ _)     <- getState
+          let (EP _ fP _ _)  = e s
+          a                 <- inAnnotP fP
+          pos               <- getPosition
+          name              <- try (reserved "function" >> identifier)
+          args              <- parens (identifier `sepBy` comma)
+          -- label sets don't cross function boundaries
+          BlockStmt _ body  <- withFreshLabelStack parseBlockStmt <?> 
+                                "function body in { ... }"
+          pos'              <- getPosition
+          let span           = Span pos pos'
+          PST e s l         <- getState
+          putState           $ PST e (updSpan span (Just a) s) l
+          return             $ FunctionStmt span name args body)
 
 parseConstructor :: Stream s Identity Char => ClassEltParser s t
 parseConstructor = do
-    try (do s@(PST e _ _)     <- getState
-            let (EP tP _ _ _)  = e s
-            a                 <- inAnnotP tP
-            pos               <- getPosition
-            try                $ reserved "constructor"
-            args              <- parens (identifier `sepBy` comma)
-            BlockStmt _ body  <- withFreshLabelStack parseBlockStmt <?> 
-                                 "constructor body in { ... }"
-            pos'              <- getPosition
-            let span           = Span pos pos'
-            PST e s l         <- getState
-            putState           $ PST e (updSpan span (Just a) s) l
-            return             $ Constructor span args body)
+  try (do s@(PST e _ _)     <- getState
+          let (EP tP _ _ _)  = e s
+          a                 <- inAnnotP tP
+          pos               <- getPosition
+          try                $ reserved "constructor"
+          args              <- parens (identifier `sepBy` comma)
+          BlockStmt _ body  <- withFreshLabelStack parseBlockStmt <?> 
+                                "constructor body in { ... }"
+          pos'              <- getPosition
+          let span           = Span pos pos'
+          PST e s l         <- getState
+          putState           $ PST e (updSpan span (Just a) s) l
+          return             $ Constructor span args body)
 
 parseMemberFuncDecl :: Stream s Identity Char => ClassEltParser s t
 parseMemberFuncDecl = do
-    try (do s@(PST e _ _)     <- getState
-            let (EP _ fP _ _)  = e s
-            a                 <- inAnnotP fP
-            pos               <- getPosition
-            mod               <- try (reserved "public" >> return True) 
-                             <|> try (option False (reserved "private" >> return False))
-            name              <- identifier
-            args              <- parens (identifier `sepBy` comma)
-            BlockStmt _ body  <- withFreshLabelStack parseBlockStmt <?> 
-                                 "method body in { ... }"
-            pos'              <- getPosition
-            let span           = Span pos pos'
-            PST e s l         <- getState
-            putState           $ PST e (updSpan span (Just a) s) l
-            return             $ MemberFuncDecl span mod name args body)
+  try (do s@(PST e _ _)     <- getState
+          let (EP _ fP _ _)  = e s
+          a                 <- inAnnotP fP
+          pos               <- getPosition
+          mod               <- try (reserved "public" >> return True) 
+                           <|> try (option False (reserved "private" >> return False))
+          static            <- option False (reserved "static" >> return True)
+          name              <- identifier
+          args              <- parens (identifier `sepBy` comma)
+          BlockStmt _ body  <- withFreshLabelStack parseBlockStmt <?> 
+                                "method body in { ... }"
+          pos'              <- getPosition
+          let span           = Span pos pos'
+          PST e s l         <- getState
+          putState           $ PST e (updSpan span (Just a) s) l
+          return             $ MemberFuncDecl span mod static name args body)
+
+--parseMemberVarDecl :: Stream s Identity Char => ClassEltParser s t
+--parseMemberVarDecl = do
+--  try (do s@(PST e _ _)     <- getState
+--          let (EP _ fP _ _)  = e s
+--          a                 <- inAnnotP fP
+--          pos               <- getPosition
+--          mod               <- try (reserved "public" >> return True) 
+--                           <|> try (option False (reserved "private" >> return False))
+--          static            <- option False (reserved "static" >> return True)
+--          return             $ undefined)
 
 
 parseClassStmt :: Stream s Identity Char => StatementParser s t
@@ -426,12 +438,6 @@ parseClassStmt =
 parseClassElement :: Stream s Identity Char =>  ClassEltParser s t 
 parseClassElement = parseConstructor <|> parseMemberFuncDecl -- <|> parseMemberVarDecl
 
-
-parseMemberVarDecl = undefined
-
-
-  
-    
             
 
 parseTopLevel :: Stream s Identity Char => ParsecT s (ParserState s t) Identity (Maybe a)
