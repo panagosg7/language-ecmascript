@@ -413,16 +413,17 @@ parseMemberFuncDecl = do
           putState           $ PST e (updSpan span (Just a) s) l
           return             $ MemberFuncDecl span mod static name args body)
 
---parseMemberVarDecl :: Stream s Identity Char => ClassEltParser s t
---parseMemberVarDecl = do
---  try (do s@(PST e _ _)     <- getState
---          let (EP _ fP _ _)  = e s
---          a                 <- inAnnotP fP
---          pos               <- getPosition
---          mod               <- try (reserved "public" >> return True) 
---                           <|> try (option False (reserved "private" >> return False))
---          static            <- option False (reserved "static" >> return True)
---          return             $ undefined)
+parseMemberVarDecl :: Stream s Identity Char => ClassEltParser s t
+parseMemberVarDecl = do
+  try (do pos               <- getPosition
+          mod               <- try (reserved "public" >> return True) 
+                           <|> try (option False (reserved "private" >> return False))
+          static            <- option False (reserved "static" >> return True)
+          varDecl           <- parseVarDecl
+          pos'              <- getPosition
+          let span           = Span pos pos'
+          semi
+          return             $ MemberVarDecl span mod static varDecl)
 
 
 parseClassStmt :: Stream s Identity Char => StatementParser s t
@@ -436,7 +437,7 @@ parseClassStmt =
           return (ClassStmt span name t))
 
 parseClassElement :: Stream s Identity Char =>  ClassEltParser s t 
-parseClassElement = parseConstructor <|> parseMemberFuncDecl -- <|> parseMemberVarDecl
+parseClassElement = parseConstructor <|> parseMemberFuncDecl <|> parseMemberVarDecl
 
             
 

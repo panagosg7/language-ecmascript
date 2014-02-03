@@ -168,16 +168,18 @@ ppClassElt (Constructor _ args body) =
   text "constructor" <>
   parens (cat $ punctuate comma (map ppId args)) $$ 
   ssAsBlock body
-ppClassElt (MemberVarDecl _ _ _ _ _) = error "UNIMPLEMENTED:ppClassElt:MemberVarDecl"
+ppClassElt (MemberVarDecl _ m s vd) = 
+  text (ite m "public" "private" ++ ite s " static" "") <+> 
+  ppVarDecl False vd <+>
+  text ";"
 ppClassElt (MemberFuncDecl _ m s name args body) = 
-    text (ite m "public" "private") <+> 
-    text (ite s "static" "") <+> 
-    ppId name <> 
-    parens (cat $ punctuate comma (map ppId args)) $$ 
-    ssAsBlock body
-  where
-    ite True a _  = a 
-    ite False _ a = a 
+  text (ite m "public" "private" ++ ite s " static" "") <+> 
+  ppId name <> 
+  parens (cat $ punctuate comma (map ppId args)) $$ 
+  ssAsBlock body
+
+ite True a _  = a 
+ite False _ a = a 
 
 stmtList :: [Statement a] -> Doc
 stmtList = vcat . map ppStatement
