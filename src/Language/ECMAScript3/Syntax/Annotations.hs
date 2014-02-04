@@ -46,28 +46,28 @@ class HasAnnotation a where
 
 instance HasAnnotation Expression where
   getAnnotation e = case e of
-   (StringLit a s)              -> a
-   (RegexpLit a s g ci)         -> a
-   (NumLit a d)                 -> a
-   (IntLit a i)                 -> a
-   (BoolLit a b)                -> a
-   (NullLit a)                  -> a
-   (ArrayLit a exps)            -> a
-   (ObjectLit a props)          -> a
-   (ThisRef a)                  -> a
-   (VarRef a id)                -> a
-   (DotRef a exp id)            -> a
-   (BracketRef a container key) -> a
-   (NewExpr a ctor params)      -> a
-   (PrefixExpr a op e)          -> a
-   (UnaryAssignExpr a op lv)    -> a
-   (InfixExpr a op e1 e2)       -> a
-   (CondExpr a g et ef)         -> a
-   (AssignExpr a op lv e)       -> a
-   (ListExpr a es)              -> a
-   (CallExpr a fn params)       -> a
-   (FuncExpr a mid args s)      -> a
-   (Cast a e)                   -> a
+   StringLit a s              -> a
+   RegexpLit a s g ci         -> a
+   NumLit a d                 -> a
+   IntLit a i                 -> a
+   BoolLit a b                -> a
+   NullLit a                  -> a
+   ArrayLit a exps            -> a
+   ObjectLit a props          -> a
+   ThisRef a                  -> a
+   VarRef a id                -> a
+   DotRef a exp id            -> a
+   BracketRef a container key -> a
+   NewExpr a ctor params      -> a
+   PrefixExpr a op e          -> a
+   UnaryAssignExpr a op lv    -> a
+   InfixExpr a op e1 e2       -> a
+   CondExpr a g et ef         -> a
+   AssignExpr a op lv e       -> a
+   ListExpr a es              -> a
+   CallExpr a fn params       -> a
+   FuncExpr a mid args s      -> a
+   Cast a e                   -> a
 
 instance HasAnnotation Statement where
   getAnnotation s = case s of
@@ -90,6 +90,7 @@ instance HasAnnotation Statement where
     WithStmt a _ _       -> a
     VarDeclStmt a _      -> a
     FunctionStmt a _ _ _ -> a
+    ClassStmt a _ _ _ _  -> a
     
 instance HasAnnotation LValue where
   getAnnotation lv = case lv of
@@ -116,3 +117,10 @@ instance HasAnnotation CatchClause where
 
 instance HasAnnotation Id where
   getAnnotation (Id a _) = a 
+
+instance HasAnnotation ClassElt where
+  getAnnotation e = case e of
+    Constructor a _ _          -> a
+    MemberVarDecl a _ _ _      -> a
+    MemberFuncDecl a _ _ _ _ _ -> a
+
