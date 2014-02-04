@@ -339,8 +339,7 @@ parseVarDecl = do
     init          <- (reservedOp "=" >> liftM Just parseExpression) <|> return Nothing
     pos'          <- getPosition
     let span       = Span pos pos'
-
-    modifyState    $ \s -> s { store = updSpan (getAnnotation id) ot2 (store s) }
+    modifyState    $ \s -> s { store = updSpan span ot2 (store s) }
     return         $ VarDecl span id init
 
 parseVarDeclStmt:: Stream s Identity Char => StatementParser s t

@@ -250,7 +250,7 @@ isIterationStmt :: Statement a -> Bool
 isIterationStmt s = case s of
   WhileStmt {}   -> True
   DoWhileStmt {} -> True
-  ForStmt {} -> True
-  ForInStmt {} -> True
-  _                 -> False
+  ForStmt {}     -> True
+  ForInStmt {}   -> True
+  _              -> False
   
