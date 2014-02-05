@@ -239,7 +239,7 @@ data Statement a
 data ClassElt a
   = Constructor a [Id a] {-args-} [Statement a] {-body-}
   | MemberVarDecl a Bool {-mod:pub/pri-} Bool {-static-} (VarDecl a)
-  | MemberFuncDecl a Bool {-mod:pub/pri-} Bool {-static-} (Id a) [Id a] [Statement a] 
+  | MemberMethDecl a Bool {-mod:pub/pri-} Bool {-static-} (Id a) [Id a] [Statement a] 
 --  | IndexSignature
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)  
 

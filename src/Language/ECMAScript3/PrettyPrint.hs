@@ -177,7 +177,7 @@ ppClassElt (MemberVarDecl _ m s vd) =
   text (ite m "public" "private" ++ ite s " static" "") <+> 
   ppVarDecl False vd <+>
   text ";"
-ppClassElt (MemberFuncDecl _ m s name args body) = 
+ppClassElt (MemberMethDecl _ m s name args body) = 
   text (ite m "public" "private" ++ ite s " static" "") <+> 
   ppId name <> 
   parens (cat $ punctuate comma (map ppId args)) $$ 

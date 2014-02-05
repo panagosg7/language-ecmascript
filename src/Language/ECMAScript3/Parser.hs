@@ -410,7 +410,7 @@ parseMemberFuncDecl = do
           let span           = Span pos pos'
           PST e s l         <- getState
           putState           $ PST e (updSpan span (Just a) s) l
-          return             $ MemberFuncDecl span mod static name args body)
+          return             $ MemberMethDecl span mod static name args body)
 
 parseMemberVarDecl :: Stream s Identity Char => ClassEltParser s t
 parseMemberVarDecl = do
