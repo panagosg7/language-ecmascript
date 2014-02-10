@@ -396,11 +396,11 @@ parseConstructor = do
 parseMemberFuncDecl :: Stream s Identity Char => ClassEltParser s t
 parseMemberFuncDecl = do
   try (do s@(PST e _ _)     <- getState
-          let (EP _ fP _ _)  = e s
-          a                 <- inAnnotP fP
+          let (EP tP _ _ _)  = e s
+          a                 <- inAnnotP tP
           pos               <- getPosition
           mod               <- try (reserved "public" >> return True) 
-                           <|> try (option False (reserved "private" >> return False))
+                           <|> try (option True (reserved "private" >> return False))
           static            <- option False (reserved "static" >> return True)
           name              <- identifier
           args              <- parens (identifier `sepBy` comma)
@@ -416,7 +416,7 @@ parseMemberVarDecl :: Stream s Identity Char => ClassEltParser s t
 parseMemberVarDecl = do
   try (do pos               <- getPosition
           mod               <- try (reserved "public" >> return True) 
-                           <|> try (option False (reserved "private" >> return False))
+                           <|> try (option True (reserved "private" >> return False))
           static            <- option False (reserved "static" >> return True)
           varDecl           <- parseVarDecl
           pos'              <- getPosition
