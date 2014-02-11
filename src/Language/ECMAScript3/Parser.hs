@@ -3,6 +3,7 @@
 module Language.ECMAScript3.Parser
   (parse
   , parseScriptFromString
+  , parseScriptFromJSON
   , parseJavaScriptFromFile
   , parseJavaScriptFromFile'
   , parseScript
