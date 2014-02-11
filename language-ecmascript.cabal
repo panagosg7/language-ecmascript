@@ -49,6 +49,7 @@ Library
     hashable,
     bytestring,
     aeson,
+    vector,
     text
   ghc-options:
     -fwarn-incomplete-patterns

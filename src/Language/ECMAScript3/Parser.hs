@@ -30,8 +30,10 @@ import qualified Language.ECMAScript3.Lexer as Lexer
 import Language.ECMAScript3.Parser.Type
 import Language.ECMAScript3.Syntax
 import Language.ECMAScript3.Syntax.Annotations
-import Data.Aeson
+import qualified Data.Aeson as A
+import qualified Data.Aeson.Types as AI
 import Data.Default
+import Data.Vector        ((!))
 import Text.Parsec hiding (parse)
 import Text.Parsec.Expr
 import Text.Parsec.Pos (newPos)
@@ -993,34 +995,42 @@ parseString externP str = case parse externP parseScript "" str of
 -- | Parse JSON
 
 
-instance FromJSON (Expression ())
-instance FromJSON (Statement ())
-instance FromJSON (LValue ())
+instance A.FromJSON (Expression SourceSpan)
+instance A.FromJSON (Statement SourceSpan)
+instance A.FromJSON (LValue SourceSpan)
 
-instance FromJSON (JavaScript ())
-instance FromJSON (ClassElt ())
-instance FromJSON (CaseClause ())
-instance FromJSON (CatchClause ())
-instance FromJSON (ForInit ())
-instance FromJSON (ForInInit ())
-instance FromJSON (VarDecl ())
-instance FromJSON InfixOp
-instance FromJSON AssignOp
-instance FromJSON (Id ())
-instance FromJSON PrefixOp
-instance FromJSON (Prop ())
-instance FromJSON UnaryAssignOp
+instance A.FromJSON (JavaScript SourceSpan)
+instance A.FromJSON (ClassElt SourceSpan)
+instance A.FromJSON (CaseClause SourceSpan)
+instance A.FromJSON (CatchClause SourceSpan)
+instance A.FromJSON (ForInit SourceSpan)
+instance A.FromJSON (ForInInit SourceSpan)
+instance A.FromJSON (VarDecl SourceSpan)
+instance A.FromJSON InfixOp
+instance A.FromJSON AssignOp
+instance A.FromJSON (Id SourceSpan)
+instance A.FromJSON PrefixOp
+instance A.FromJSON (Prop SourceSpan)
+instance A.FromJSON UnaryAssignOp
 
-instance FromJSON SourcePos where 
-  parseJSON (Object v) = return $ newPos "" 1 2 
-  parseJSON _          = mzero 
+instance A.FromJSON SourcePos where
+  parseJSON (A.Array v) = do
+    v0 <- A.parseJSON (v!0) :: AI.Parser String 
+    v1 <- A.parseJSON (v!1) :: AI.Parser Int
+    v2 <- A.parseJSON (v!2) :: AI.Parser Int
+    return $ newPos v0 v1 v2
+  parseJSON _ = error "SourcePos should only be an A.Array" 
+
+instance A.FromJSON SourceSpan
 
 getJSON :: MonadIO m => FilePath -> m B.ByteString
 getJSON = liftIO . B.readFile
 
-parseScriptFromJSON  :: FilePath -> IO (Either String [Expression ()])
-parseScriptFromJSON filename = do
+parseScriptFromJSON' :: FilePath -> IO (Either String [Statement SourceSpan])
+parseScriptFromJSON' filename = do
   chars <- getJSON filename
-  return $ eitherDecode chars :: IO (Either String [Expression ()])
+  return $ A.eitherDecode chars :: IO (Either String [Statement SourceSpan])
 
+parseScriptFromJSON :: MonadIO m => FilePath -> m (Either String [Statement SourceSpan])
+parseScriptFromJSON = liftIO . parseScriptFromJSON'
 
