@@ -1,5 +1,5 @@
  -- | Parser for ECMAScript 3.
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
 module Language.ECMAScript3.Parser
   (parse
   , parseScriptFromString
@@ -30,12 +30,15 @@ import qualified Language.ECMAScript3.Lexer as Lexer
 import Language.ECMAScript3.Parser.Type
 import Language.ECMAScript3.Syntax
 import Language.ECMAScript3.Syntax.Annotations
+import Data.Aeson
 import Data.Default
 import Text.Parsec hiding (parse)
 import Text.Parsec.Expr
+import Text.Parsec.Pos (newPos)
+
 import Control.Monad(liftM,liftM2,liftM3)
 import Control.Monad.Trans (MonadIO,liftIO)
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>),(<*>))
 import Numeric(readDec,readOct,readHex)
 import Data.Char
 import Control.Monad.Identity
@@ -43,6 +46,8 @@ import Data.Maybe (isJust, isNothing, fromMaybe, catMaybes)
 import Data.Typeable
 import Data.Generics hiding (Infix)
 import qualified Data.HashMap.Strict as M
+import qualified Data.ByteString.Lazy as B
+
 import Debug.Trace (trace, traceShow)
 
 -- | Tag each entity with the span from the file from which it was parsed.
@@ -983,3 +988,39 @@ parseString :: Stream s Identity Char => (ParserState s t -> ExternP s t) -> s -
 parseString externP str = case parse externP parseScript "" str of
   Left err                    -> error (show err)
   Right (Script _ stmts, _ )  -> stmts
+
+
+-- | Parse JSON
+
+
+instance FromJSON (Expression ())
+instance FromJSON (Statement ())
+instance FromJSON (LValue ())
+
+instance FromJSON (JavaScript ())
+instance FromJSON (ClassElt ())
+instance FromJSON (CaseClause ())
+instance FromJSON (CatchClause ())
+instance FromJSON (ForInit ())
+instance FromJSON (ForInInit ())
+instance FromJSON (VarDecl ())
+instance FromJSON InfixOp
+instance FromJSON AssignOp
+instance FromJSON (Id ())
+instance FromJSON PrefixOp
+instance FromJSON (Prop ())
+instance FromJSON UnaryAssignOp
+
+instance FromJSON SourcePos where 
+  parseJSON (Object v) = return $ newPos "" 1 2 
+  parseJSON _          = mzero 
+
+getJSON :: MonadIO m => FilePath -> m B.ByteString
+getJSON = liftIO . B.readFile
+
+parseScriptFromJSON  :: FilePath -> IO (Either String [Expression ()])
+parseScriptFromJSON filename = do
+  chars <- getJSON filename
+  return $ eitherDecode chars :: IO (Either String [Expression ()])
+
+

@@ -17,7 +17,7 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Language.ECMAScript3.Token
+module Language.ECMAScript3.Text.Parsec.Token
     ( LanguageDef
     , GenLanguageDef (..)
     , TokenParser
