@@ -34,7 +34,8 @@ import Language.ECMAScript3.Syntax.Annotations
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Types as AI
 import Data.Default
-import Data.Vector        ((!))
+import Data.Text          (pack)
+import Data.Vector        ((!), fromList)
 import Text.Parsec hiding (parse)
 import Text.Parsec.Expr
 import Text.Parsec.Pos (newPos)
@@ -999,7 +1000,6 @@ parseString externP str = case parse externP parseScript "" str of
 instance A.FromJSON (Expression SourceSpan)
 instance A.FromJSON (Statement SourceSpan)
 instance A.FromJSON (LValue SourceSpan)
-
 instance A.FromJSON (JavaScript SourceSpan)
 instance A.FromJSON (ClassElt SourceSpan)
 instance A.FromJSON (CaseClause SourceSpan)
@@ -1023,6 +1023,32 @@ instance A.FromJSON SourcePos where
   parseJSON _ = error "SourcePos should only be an A.Array" 
 
 instance A.FromJSON SourceSpan
+
+instance A.ToJSON (Expression SourceSpan)
+instance A.ToJSON (Statement SourceSpan)
+instance A.ToJSON (LValue SourceSpan)
+
+instance A.ToJSON (JavaScript SourceSpan)
+instance A.ToJSON (ClassElt SourceSpan)
+instance A.ToJSON (CaseClause SourceSpan)
+instance A.ToJSON (CatchClause SourceSpan)
+instance A.ToJSON (ForInit SourceSpan)
+instance A.ToJSON (ForInInit SourceSpan)
+instance A.ToJSON (VarDecl SourceSpan)
+instance A.ToJSON InfixOp
+instance A.ToJSON AssignOp
+instance A.ToJSON (Id SourceSpan)
+instance A.ToJSON PrefixOp
+instance A.ToJSON (Prop SourceSpan)
+instance A.ToJSON UnaryAssignOp
+instance A.ToJSON SourceSpan
+
+instance A.ToJSON SourcePos where
+  toJSON sp = A.Array $ fromList [s, l, c]
+    where s = A.String $ pack $ sourceName sp
+          l = A.Number $ fromIntegral $ sourceLine sp
+          c = A.Number $ fromIntegral $ sourceColumn sp
+
 
 getJSON :: MonadIO m => FilePath -> m B.ByteString
 getJSON = liftIO . B.readFile
