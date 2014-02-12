@@ -50,7 +50,7 @@ import Data.Maybe (isJust, isNothing, fromMaybe, catMaybes)
 import Data.Typeable
 import Data.Generics hiding (Infix)
 import qualified Data.HashMap.Strict as M
-import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString.Lazy.Char8 as B
 
 import Debug.Trace (trace, traceShow)
 
