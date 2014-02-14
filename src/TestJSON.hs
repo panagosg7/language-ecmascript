@@ -157,6 +157,7 @@ data Expression a
     -- ^ @e1 \@=e2@, spec 11.13
   | ListExpr a [Expression a] -- ^ @e1, e2@, spec 11.14
   | CallExpr a (Expression a) [Expression a] -- ^ @f(x,y,z)@, spec 11.2.3
+  | SuperExpr a [Expression a] -- ^ @super(x,y,z)@
   --funcexprs are optionally named
   | FuncExpr a (Maybe (Id a)) [Id a] [Statement a]
     -- ^ @function f (x,y,z) {...}@, spec 11.2.5, 13
@@ -408,7 +409,7 @@ ppStatement s = case s of
         Nothing -> text "") <+>
     ( case imp of 
         [] -> text ""
-        is -> text "implements" <+> cat (punctuate comma (map ppId is))) <+>
+        is -> text "implements" <+> cat (punctuate comma (map ppId is))) $$
     classEltAsBlock body
 
 ppClassElt :: ClassElt a -> Doc
@@ -688,10 +689,17 @@ ppListExpression hasIn e = case e of
   _ -> ppAssignmentExpression hasIn e
 
 -- PV Adding new levels for Casts
-ppExpression :: Bool -> Expression a -> Doc
-ppExpression hasIn e = case e of
+ppCastExpression :: Bool -> Expression a -> Doc
+ppCastExpression hasIn e = case e of
   Cast _ e  ->  text "Cast" <> (parens $ ppExpression False e)
   _         -> ppListExpression hasIn e
+
+-- PV Adding new levels for Super
+ppExpression :: Bool -> Expression a -> Doc
+ppExpression hasIn e = case e of
+  SuperExpr _ es  ->  text "super" <> (ppArguments es)
+  _         -> ppCastExpression hasIn e
+
 
 maybe :: Maybe a -> (a -> Doc) -> Doc
 maybe Nothing  _ = empty

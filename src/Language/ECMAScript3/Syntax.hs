@@ -145,7 +145,7 @@ data Expression a
   | VarRef a (Id a) -- ^ @foo@, spec 11.1.2
   | DotRef a (Expression a) (Id a) -- ^ @foo.bar@, spec 11.2.1
   | BracketRef a (Expression a) {- container -} (Expression a) {- key -} 
-    -- ^ @foo[bar@, spec 11.2.1
+    -- ^ @foo[bar]@, spec 11.2.1
   | NewExpr a (Expression a) {- constructor -} [Expression a] 
     -- ^ @new foo(bar)@, spec 11.2.2
   | PrefixExpr a PrefixOp (Expression a) 
@@ -160,6 +160,7 @@ data Expression a
     -- ^ @e1 \@=e2@, spec 11.13
   | ListExpr a [Expression a] -- ^ @e1, e2@, spec 11.14
   | CallExpr a (Expression a) [Expression a] -- ^ @f(x,y,z)@, spec 11.2.3
+  | SuperExpr a [Expression a] -- ^ @super(x,y,z)@
   --funcexprs are optionally named
   | FuncExpr a (Maybe (Id a)) [Id a] [Statement a]
     -- ^ @function f (x,y,z) {...}@, spec 11.2.5, 13
