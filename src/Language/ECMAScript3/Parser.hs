@@ -996,23 +996,23 @@ parseString externP str = case parse externP parseScript "" str of
 
 -- | Parse JSON
 
-
-instance A.FromJSON (Expression SourceSpan)
-instance A.FromJSON (Statement SourceSpan)
-instance A.FromJSON (LValue SourceSpan)
-instance A.FromJSON (JavaScript SourceSpan)
-instance A.FromJSON (ClassElt SourceSpan)
-instance A.FromJSON (CaseClause SourceSpan)
-instance A.FromJSON (CatchClause SourceSpan)
-instance A.FromJSON (ForInit SourceSpan)
-instance A.FromJSON (ForInInit SourceSpan)
-instance A.FromJSON (VarDecl SourceSpan)
+instance A.FromJSON (Expression (SourceSpan, Maybe String))
+instance A.FromJSON (Statement (SourceSpan, Maybe String))
+instance A.FromJSON (LValue (SourceSpan, Maybe String))
+instance A.FromJSON (JavaScript (SourceSpan, Maybe String))
+instance A.FromJSON (ClassElt (SourceSpan, Maybe String))
+instance A.FromJSON (CaseClause (SourceSpan, Maybe String))
+instance A.FromJSON (CatchClause (SourceSpan, Maybe String))
+instance A.FromJSON (ForInit (SourceSpan, Maybe String))
+instance A.FromJSON (ForInInit (SourceSpan, Maybe String))
+instance A.FromJSON (VarDecl (SourceSpan, Maybe String))
+instance A.FromJSON (Id (SourceSpan, Maybe String))
+instance A.FromJSON (Prop (SourceSpan, Maybe String))
 instance A.FromJSON InfixOp
 instance A.FromJSON AssignOp
-instance A.FromJSON (Id SourceSpan)
 instance A.FromJSON PrefixOp
-instance A.FromJSON (Prop SourceSpan)
 instance A.FromJSON UnaryAssignOp
+instance A.FromJSON SourceSpan
 
 instance A.FromJSON SourcePos where
   parseJSON (A.Array v) = do
@@ -1022,42 +1022,19 @@ instance A.FromJSON SourcePos where
     return $ newPos v0 v1 v2
   parseJSON _ = error "SourcePos should only be an A.Array" 
 
-instance A.FromJSON SourceSpan
-
-instance A.ToJSON (Expression SourceSpan)
-instance A.ToJSON (Statement SourceSpan)
-instance A.ToJSON (LValue SourceSpan)
-
-instance A.ToJSON (JavaScript SourceSpan)
-instance A.ToJSON (ClassElt SourceSpan)
-instance A.ToJSON (CaseClause SourceSpan)
-instance A.ToJSON (CatchClause SourceSpan)
-instance A.ToJSON (ForInit SourceSpan)
-instance A.ToJSON (ForInInit SourceSpan)
-instance A.ToJSON (VarDecl SourceSpan)
-instance A.ToJSON InfixOp
-instance A.ToJSON AssignOp
-instance A.ToJSON (Id SourceSpan)
-instance A.ToJSON PrefixOp
-instance A.ToJSON (Prop SourceSpan)
-instance A.ToJSON UnaryAssignOp
-instance A.ToJSON SourceSpan
-
-instance A.ToJSON SourcePos where
-  toJSON sp = A.Array $ fromList [s, l, c]
-    where s = A.String $ pack $ sourceName sp
-          l = A.Number $ fromIntegral $ sourceLine sp
-          c = A.Number $ fromIntegral $ sourceColumn sp
-
+decodeOrDie s = 
+  case A.eitherDecode s :: Either String [Statement (SourceSpan, Maybe String)] of
+    Left msg -> error msg
+    Right p  -> p
 
 getJSON :: MonadIO m => FilePath -> m B.ByteString
 getJSON = liftIO . B.readFile
 
-parseScriptFromJSON' :: FilePath -> IO (Either String [Statement SourceSpan])
+parseScriptFromJSON' :: FilePath -> IO [Statement (SourceSpan, Maybe String)]
 parseScriptFromJSON' filename = do
   chars <- getJSON filename
-  return $ A.eitherDecode chars :: IO (Either String [Statement SourceSpan])
+  return $ decodeOrDie chars
 
-parseScriptFromJSON :: MonadIO m => FilePath -> m (Either String [Statement SourceSpan])
+parseScriptFromJSON :: MonadIO m => FilePath -> m [Statement (SourceSpan, Maybe String)]
 parseScriptFromJSON = liftIO . parseScriptFromJSON'
 
