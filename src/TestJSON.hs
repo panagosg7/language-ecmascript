@@ -710,6 +710,23 @@ instance PP (SourceSpan, Maybe String) where
   pp (_, Just s)  = text "/*@" <+> text s <+> text "*/"
   pp (_, Nothing) = text ""
 
+instance PP (MyAnnot) where
+  pp (Spec s) = text "/*@ spec" <+> text s <+> text "*/"
+  pp (Meas s) = text "/*@ meas" <+> text s <+> text "*/"
+  pp (Bind s) = text "/*@ bind" <+> text s <+> text "*/"
+  pp (Extern s) = text "/*@ extern" <+> text s <+> text "*/"
+  pp (Type s) = text "/*@type" <+> text s <+> text "*/"
+  pp (TAlias s) = text "/*@talias" <+> text s <+> text "*/"
+  pp (PAlias s) = text "/*@palias" <+> text s <+> text "*/"
+  pp (Qual s) = text "/*@qual" <+> text s <+> text "*/"
+  pp (Invt s) = text "/*@invt" <+> text s <+> text "*/"
+
+instance PP [MyAnnot] where 
+  pp ss = cat (map pp ss)
+
+instance PP (SourceSpan, [MyAnnot]) where
+  pp (_, ms) = pp ms
+
 instance PP (SourceSpan) where
   pp (Span a b) = pp a <+> pp b
 
@@ -745,21 +762,23 @@ instance FromJSON (VarDecl SourceSpan)
 instance FromJSON (Id SourceSpan)
 instance FromJSON (Prop SourceSpan)
 
-instance FromJSON (Expression (SourceSpan, Maybe String))
-instance FromJSON (Statement (SourceSpan, Maybe String))
-instance FromJSON (LValue (SourceSpan, Maybe String))
-instance FromJSON (JavaScript (SourceSpan, Maybe String))
-instance FromJSON (ClassElt (SourceSpan, Maybe String))
-instance FromJSON (CaseClause (SourceSpan, Maybe String))
-instance FromJSON (CatchClause (SourceSpan, Maybe String))
-instance FromJSON (ForInit (SourceSpan, Maybe String))
-instance FromJSON (ForInInit (SourceSpan, Maybe String))
-instance FromJSON (VarDecl (SourceSpan, Maybe String))
+instance FromJSON (Expression (SourceSpan, [MyAnnot]))
+instance FromJSON (Statement (SourceSpan, [MyAnnot]))
+instance FromJSON (LValue (SourceSpan, [MyAnnot]))
+instance FromJSON (JavaScript (SourceSpan, [MyAnnot]))
+instance FromJSON (ClassElt (SourceSpan, [MyAnnot]))
+instance FromJSON (CaseClause (SourceSpan, [MyAnnot]))
+instance FromJSON (CatchClause (SourceSpan, [MyAnnot]))
+instance FromJSON (ForInit (SourceSpan, [MyAnnot]))
+instance FromJSON (ForInInit (SourceSpan, [MyAnnot]))
+instance FromJSON (VarDecl (SourceSpan, [MyAnnot]))
 instance FromJSON InfixOp
 instance FromJSON AssignOp
-instance FromJSON (Id (SourceSpan, Maybe String))
+instance FromJSON (Id (SourceSpan, [MyAnnot]))
 instance FromJSON PrefixOp
-instance FromJSON (Prop (SourceSpan, Maybe String))
+instance FromJSON (Prop (SourceSpan, [MyAnnot]))
+instance FromJSON MyAnnot
+instance FromJSON (SourceSpan, [MyAnnot])
 instance FromJSON UnaryAssignOp
 
 instance ToJSON (Expression SourceSpan)
@@ -806,8 +825,22 @@ instance (PP a, PP b) => PP (Either a b) where
 instance PP [Char] where
   pp = ptext
 
+data MyAnnot
+  = Spec String
+  | Meas String
+  | Bind String
+  | Extern String
+  | Type String
+  | TAlias String
+  | PAlias String
+  | Qual String
+  | Invt String
+  deriving (Show,Eq,Ord,Data,Typeable,Generic)
+
+
+
 decodeOrDie s = 
-  case eitherDecode s :: Either String [Statement (SourceSpan, Maybe String)] of
+  case eitherDecode s :: Either String [Statement (SourceSpan, [MyAnnot])] of
     Left msg -> error msg
     Right p  -> p
 
