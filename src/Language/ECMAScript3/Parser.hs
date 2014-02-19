@@ -1,8 +1,9 @@
  -- | Parser for ECMAScript 3.
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, FlexibleInstances #-}
 module Language.ECMAScript3.Parser
   (parse
   , parseScriptFromString
+  , parseScriptFromJSON
   , parseJavaScriptFromFile
   , parseJavaScriptFromFile'
   , parseScript
@@ -30,12 +31,18 @@ import qualified Language.ECMAScript3.Lexer as Lexer
 import Language.ECMAScript3.Parser.Type
 import Language.ECMAScript3.Syntax
 import Language.ECMAScript3.Syntax.Annotations
+import qualified Data.Aeson as A
+import qualified Data.Aeson.Types as AI
 import Data.Default
+import Data.Text          (pack)
+import Data.Vector        ((!), fromList)
 import Text.Parsec hiding (parse)
 import Text.Parsec.Expr
+import Text.Parsec.Pos (newPos)
+
 import Control.Monad(liftM,liftM2,liftM3)
 import Control.Monad.Trans (MonadIO,liftIO)
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>),(<*>))
 import Numeric(readDec,readOct,readHex)
 import Data.Char
 import Control.Monad.Identity
@@ -43,18 +50,24 @@ import Data.Maybe (isJust, isNothing, fromMaybe, catMaybes)
 import Data.Typeable
 import Data.Generics hiding (Infix)
 import qualified Data.HashMap.Strict as M
+import qualified Data.ByteString.Lazy.Char8 as B
+
 import Debug.Trace (trace, traceShow)
 
 -- | Tag each entity with the span from the file from which it was parsed.
 
 
 -- We parameterize the parse tree over source-locations.
-type ParsedStatement = Statement SourceSpan
+type ParsedStatement  = Statement SourceSpan
 type ParsedExpression = Expression SourceSpan
+type ParsedClassElt   = ClassElt SourceSpan
 
 -- These parsers can store some arbitrary state
-type StatementParser s t = Parser s t ParsedStatement
+type StatementParser s t  = Parser s t ParsedStatement
 type ExpressionParser s t = Parser s t ParsedExpression
+type ClassEltParser s t   = Parser s t ParsedClassElt
+
+
 
 
 initialParserState :: Stream s Identity Char => (ParserState s t -> ExternP s t) -> ParserState s t
@@ -323,6 +336,10 @@ inAnnotP p = do string "/*@"  >> whiteSpace
                 whiteSpace    >> string "*/" >> whiteSpace
                 return t
 
+
+updSpan span (Just t) s = M.insert span [t] s
+updSpan _ _ s = s
+
 parseVarDecl :: Stream s Identity Char => Parser s t (VarDecl SourceSpan) 
 parseVarDecl = do
     pos           <- getPosition
@@ -331,12 +348,8 @@ parseVarDecl = do
     init          <- (reservedOp "=" >> liftM Just parseExpression) <|> return Nothing
     pos'          <- getPosition
     let span       = Span pos pos'
-
-    modifyState    $ \s -> s { store = upd (getAnnotation id) ot2 (store s) }
+    modifyState    $ \s -> s { store = updSpan span ot2 (store s) }
     return         $ VarDecl span id init
-  where 
-    upd span (Just t) s = M.insert span [t] s
-    upd _ _ s           = s
 
 parseVarDeclStmt:: Stream s Identity Char => StatementParser s t
 parseVarDeclStmt = do 
@@ -355,26 +368,90 @@ parseVarDeclStmt = do
     ss (Just tt) = show $ length tt
     ss _         = "0"
 
+
 parseFunctionStmt:: Stream s Identity Char => StatementParser s t
 parseFunctionStmt = do
-    try (do s@(PST e _ _) <- getState
-            let (EP tP fP _ _) = e s
-            {-a <- inAnnotP ((try fP) <|> tP)-}
-            a <- inAnnotP fP
-            pos  <- getPosition
-            name <- try (reserved "function" >> identifier) -- ambiguity with FuncExpr
-            args <- parens (identifier `sepBy` comma)
-            -- label sets don't cross function boundaries
-            BlockStmt _ body <- withFreshLabelStack parseBlockStmt <?> 
+  try (do s@(PST e _ _)     <- getState
+          let (EP _ fP _ _)  = e s
+          a                 <- inAnnotP fP
+          pos               <- getPosition
+          name              <- try (reserved "function" >> identifier)
+          args              <- parens (identifier `sepBy` comma)
+          -- label sets don't cross function boundaries
+          BlockStmt _ body  <- withFreshLabelStack parseBlockStmt <?> 
                                 "function body in { ... }"
-            pos' <- getPosition
-            let span  = Span pos pos'
-            PST e s l <- getState
-            putState $ PST e (upd span (Just a) s) l
-            return (FunctionStmt span name args body))
-  where 
-    upd span (Just t) s = M.insert span [t] s
-    upd _ _ s = s
+          pos'              <- getPosition
+          let span           = Span pos pos'
+          PST e s l         <- getState
+          putState           $ PST e (updSpan span (Just a) s) l
+          return             $ FunctionStmt span name args body)
+
+parseConstructor :: Stream s Identity Char => ClassEltParser s t
+parseConstructor = do
+  try (do s@(PST e _ _)     <- getState
+          let (EP tP _ _ _)  = e s
+          a                 <- inAnnotP tP
+          pos               <- getPosition
+          try                $ reserved "constructor"
+          args              <- parens (identifier `sepBy` comma)
+          BlockStmt _ body  <- withFreshLabelStack parseBlockStmt <?> 
+                                "constructor body in { ... }"
+          pos'              <- getPosition
+          let span           = Span pos pos'
+          PST e s l         <- getState
+          putState           $ PST e (updSpan span (Just a) s) l
+          return             $ Constructor span args body)
+
+parseMemberFuncDecl :: Stream s Identity Char => ClassEltParser s t
+parseMemberFuncDecl = do
+  try (do s@(PST e _ _)     <- getState
+          let (EP tP _ _ _)  = e s
+          a                 <- inAnnotP tP
+          pos               <- getPosition
+          mod               <- try (reserved "public" >> return True) 
+                           <|> try (option True (reserved "private" >> return False))
+          static            <- option False (reserved "static" >> return True)
+          name              <- identifier
+          args              <- parens (identifier `sepBy` comma)
+          BlockStmt _ body  <- withFreshLabelStack parseBlockStmt <?> 
+                                "method body in { ... }"
+          pos'              <- getPosition
+          let span           = Span pos pos'
+          PST e s l         <- getState
+          putState           $ PST e (updSpan span (Just a) s) l
+          return             $ MemberMethDecl span mod static name args body)
+
+parseMemberVarDecl :: Stream s Identity Char => ClassEltParser s t
+parseMemberVarDecl = do
+  try (do pos               <- getPosition
+          mod               <- try (reserved "public" >> return True) 
+                           <|> try (option True (reserved "private" >> return False))
+          static            <- option False (reserved "static" >> return True)
+          varDecl           <- parseVarDecl
+          pos'              <- getPosition
+          let span           = Span pos pos'
+          semi
+          return             $ MemberVarDecl span mod static varDecl)
+
+
+parseClassStmt :: Stream s Identity Char => StatementParser s t
+parseClassStmt = 
+  try (do pos     <- getPosition
+          name    <- try (reserved "class" >> identifier)
+          extends <- optionMaybe (reserved "extends" >> identifier)
+          impls   <- maybeToList <$> optionMaybe (reserved "implements" >> identifier `sepBy` comma)
+          t       <- braces (parseClassElement `sepBy` whiteSpace)
+          pos'    <- getPosition
+          let span = Span pos pos'
+          return   $ ClassStmt span name extends impls t)
+
+maybeToList Nothing   = []
+maybeToList (Just xs) = xs
+
+parseClassElement :: Stream s Identity Char =>  ClassEltParser s t 
+parseClassElement = parseConstructor <|> parseMemberFuncDecl <|> parseMemberVarDecl
+
+            
 
 parseTopLevel :: Stream s Identity Char => ParsecT s (ParserState s t) Identity (Maybe a)
 parseTopLevel = do
@@ -383,17 +460,15 @@ parseTopLevel = do
     a       <- inAnnotP . topLevelP =<< getExtP
     pos'    <- getPosition
     let span = Span pos pos'
-    putState $ PST e (upd span a s) l
+    putState $ PST e (M.insert span [a] s) l
     return   $ Nothing
-  where
-    upd span t s = M.insert span [t] s
 
 parseStatement:: Stream s Identity Char => StatementParser s t
 parseStatement = parseIfStmt <|> parseSwitchStmt <|> parseWhileStmt 
   <|> parseDoWhileStmt <|> parseContinueStmt <|> parseBreakStmt 
   <|> parseBlockStmt <|> parseEmptyStmt <|> parseForInStmt <|> parseForStmt
   <|> parseTryStmt <|> parseThrowStmt <|> parseReturnStmt <|> parseWithStmt 
-  <|> parseVarDeclStmt  <|> parseFunctionStmt
+  <|> parseVarDeclStmt  <|> parseFunctionStmt <|> parseClassStmt
   -- labelled, expression and the error message always go last, in this order
   <|> parseLabelledStmt <|> parseExpressionStmt <?> "statement"
 
@@ -917,3 +992,49 @@ parseString :: Stream s Identity Char => (ParserState s t -> ExternP s t) -> s -
 parseString externP str = case parse externP parseScript "" str of
   Left err                    -> error (show err)
   Right (Script _ stmts, _ )  -> stmts
+
+
+-- | Parse JSON
+
+instance A.FromJSON (Expression (SourceSpan, Maybe String))
+instance A.FromJSON (Statement (SourceSpan, Maybe String))
+instance A.FromJSON (LValue (SourceSpan, Maybe String))
+instance A.FromJSON (JavaScript (SourceSpan, Maybe String))
+instance A.FromJSON (ClassElt (SourceSpan, Maybe String))
+instance A.FromJSON (CaseClause (SourceSpan, Maybe String))
+instance A.FromJSON (CatchClause (SourceSpan, Maybe String))
+instance A.FromJSON (ForInit (SourceSpan, Maybe String))
+instance A.FromJSON (ForInInit (SourceSpan, Maybe String))
+instance A.FromJSON (VarDecl (SourceSpan, Maybe String))
+instance A.FromJSON (Id (SourceSpan, Maybe String))
+instance A.FromJSON (Prop (SourceSpan, Maybe String))
+instance A.FromJSON InfixOp
+instance A.FromJSON AssignOp
+instance A.FromJSON PrefixOp
+instance A.FromJSON UnaryAssignOp
+instance A.FromJSON SourceSpan
+
+instance A.FromJSON SourcePos where
+  parseJSON (A.Array v) = do
+    v0 <- A.parseJSON (v!0) :: AI.Parser String 
+    v1 <- A.parseJSON (v!1) :: AI.Parser Int
+    v2 <- A.parseJSON (v!2) :: AI.Parser Int
+    return $ newPos v0 v1 v2
+  parseJSON _ = error "SourcePos should only be an A.Array" 
+
+decodeOrDie s = 
+  case A.eitherDecode s :: Either String [Statement (SourceSpan, Maybe String)] of
+    Left msg -> error msg
+    Right p  -> p
+
+getJSON :: MonadIO m => FilePath -> m B.ByteString
+getJSON = liftIO . B.readFile
+
+parseScriptFromJSON' :: FilePath -> IO [Statement (SourceSpan, Maybe String)]
+parseScriptFromJSON' filename = do
+  chars <- getJSON filename
+  return $ decodeOrDie chars
+
+parseScriptFromJSON :: MonadIO m => FilePath -> m [Statement (SourceSpan, Maybe String)]
+parseScriptFromJSON = liftIO . parseScriptFromJSON'
+

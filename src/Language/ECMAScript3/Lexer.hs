@@ -13,7 +13,7 @@ module Language.ECMAScript3.Lexer(lexeme,identifier,reserved,operator,reservedOp
 import Prelude hiding (lex)
 import Text.Parsec
 -- PV: using my version of Token ...
-import qualified Language.ECMAScript3.Token as T
+import qualified Language.ECMAScript3.Text.Parsec.Token as T
 -- import qualified Text.Parsec.Token as T
 -- import Language.ECMAScript3.Parser.State
 import Language.ECMAScript3.Parser.Type

@@ -72,10 +72,14 @@ renderExpression = render . (ppExpression True)
 -- Displays the statement in { ... }, unless it is a block itself.
 inBlock:: Statement a -> Doc
 inBlock s@(BlockStmt _ _) = ppStatement s
-inBlock s                 = asBlock [s]
+inBlock s                 = ssAsBlock [s]
 
-asBlock :: [Statement a] -> Doc
-asBlock ss = lbrace $+$ nest 2 (stmtList ss) $$ rbrace
+-- ssAsBlock :: [Statement a] -> Doc
+asBlock f ss = lbrace $+$ nest 2 (f ss) $$ rbrace
+
+ssAsBlock = asBlock stmtList
+
+classEltAsBlock = asBlock classEltList
 
 ppId (Id _ str) = text str
 
@@ -103,7 +107,7 @@ ppVarDecl hasIn vd = case vd of
 
 ppStatement :: Statement a -> Doc
 ppStatement s = case s of
-  BlockStmt _ ss -> asBlock ss
+  BlockStmt _ ss -> ssAsBlock ss
   EmptyStmt _ -> semi
   ExprStmt _ e@(CallExpr _ (FuncExpr {}) _ ) -> 
     parens (ppExpression True e) <> semi
@@ -153,10 +157,40 @@ ppStatement s = case s of
   FunctionStmt _ name args body ->
     text "function" <+> ppId name <> 
     parens (cat $ punctuate comma (map ppId args)) $$ 
-    asBlock body
+    ssAsBlock body
+  ClassStmt _ name ext imp body -> 
+    text "class" <+> ppId name  <+> 
+    ( case ext of 
+        Just e  -> text "extends" <+> ppId e
+        Nothing -> text "") <+>
+    ( case imp of 
+        [] -> text ""
+        is -> text "implements" <+> cat (punctuate comma (map ppId is))) $$
+    classEltAsBlock body
+
+ppClassElt :: ClassElt a -> Doc
+ppClassElt (Constructor _ args body) = 
+  text "constructor" <>
+  parens (cat $ punctuate comma (map ppId args)) $$ 
+  ssAsBlock body
+ppClassElt (MemberVarDecl _ m s vd) = 
+  text (ite m "public" "private" ++ ite s " static" "") <+> 
+  ppVarDecl False vd <+>
+  text ";"
+ppClassElt (MemberMethDecl _ m s name args body) = 
+  text (ite m "public" "private" ++ ite s " static" "") <+> 
+  ppId name <> 
+  parens (cat $ punctuate comma (map ppId args)) $$ 
+  ssAsBlock body
+
+ite True a _  = a 
+ite False _ a = a 
 
 stmtList :: [Statement a] -> Doc
 stmtList = vcat . map ppStatement
+
+classEltList :: [ClassElt a] -> Doc
+classEltList = vcat . map ppClassElt
 
 caseClauseList :: [CaseClause a] -> Doc
 caseClauseList = vcat . map caseClause
@@ -274,7 +308,7 @@ ppMemberExpression e = case e of
   FuncExpr _ name params body -> 
     text "function" <+> maybe name ppId <+>
     parens (cat $ punctuate comma (map ppId params)) $$ 
-    asBlock body
+    ssAsBlock body
   DotRef _ obj id -> ppMemberExpression obj <> text "." <> ppId id
   BracketRef _ obj key -> 
     ppMemberExpression obj <> brackets (ppExpression True key)  
@@ -411,10 +445,18 @@ ppListExpression hasIn e = case e of
   _ -> ppAssignmentExpression hasIn e
 
 -- PV Adding new levels for Casts
-ppExpression :: Bool -> Expression a -> Doc
-ppExpression hasIn e = case e of
+ppCastExpression :: Bool -> Expression a -> Doc
+ppCastExpression hasIn e = case e of
   Cast _ e  ->  text "Cast" <> (parens $ ppExpression False e)
   _         -> ppListExpression hasIn e
+
+-- PV Adding new levels for Super
+ppExpression :: Bool -> Expression a -> Doc
+ppExpression hasIn e = case e of
+  SuperExpr _ es  ->  text "super" <> (ppArguments es)
+  _         -> ppCastExpression hasIn e
+
+
 
 maybe :: Maybe a -> (a -> Doc) -> Doc
 maybe Nothing  _ = empty
