@@ -32,6 +32,9 @@ instance PP (CaseClause a) where
 
 instance PP [(CaseClause a)] where
   pp = caseClauseList
+  
+instance PP (ClassElt a)  where
+  pp = ppClassElt 
 
 instance PP (ForInit a) where 
   pp = forInit 
