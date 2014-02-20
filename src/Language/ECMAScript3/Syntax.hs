@@ -2,11 +2,14 @@
 -- 3rd edition.
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveFoldable #-}
 module Language.ECMAScript3.Syntax (JavaScript(..)
                                    ,unJavaScript
                                    ,Statement(..)
+                                   ,ClassElt(..)
                                    ,isIterationStmt
                                    ,CaseClause(..)
                                    ,CatchClause(..)
@@ -27,14 +30,17 @@ module Language.ECMAScript3.Syntax (JavaScript(..)
 
 import Text.Parsec.Pos(initialPos,SourcePos) -- used by data JavaScript
 import Data.Generics(Data,Typeable)
+import Data.Aeson
+import Data.Text
 import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)
 import Data.Default
+import GHC.Generics
 
 data JavaScript a
   -- |A script in \<script\> ... \</script\> tags.
   = Script a [Statement a] 
-  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)
 
 instance Default a => Default (JavaScript a) where
   def = Script def []
@@ -47,7 +53,7 @@ instance Default SourcePos where
   def = initialPos ""
 
 data Id a = Id a String 
-          deriving (Show,Eq,Ord,Data,Typeable,Functor,Foldable,Traversable)
+          deriving (Show,Eq,Ord,Data,Typeable,Functor,Foldable,Traversable,Generic)
 
 unId :: Id a -> String
 unId (Id _ s) = s
@@ -76,7 +82,7 @@ data InfixOp = OpLT -- ^ @<@
              | OpBXor -- ^ @^@
              | OpBOr -- ^ @|@
              | OpAdd -- ^ @+@
-    deriving (Show,Data,Typeable,Eq,Ord,Enum)
+    deriving (Show,Data,Typeable,Eq,Ord,Enum,Generic)
 
 -- | Assignment operators: see spec 11.13
 data AssignOp = OpAssign -- ^ simple assignment, @=@
@@ -91,14 +97,14 @@ data AssignOp = OpAssign -- ^ simple assignment, @=@
               | OpAssignBAnd -- ^ @&=@
               | OpAssignBXor -- ^ @^=@
               | OpAssignBOr -- ^ @|=@
-  deriving (Show,Data,Typeable,Eq,Ord)
+  deriving (Show,Data,Typeable,Eq,Ord,Generic)
 
 -- | Unary assignment operators: see spec 11.3, 11.4.4, 11.4.5
 data UnaryAssignOp = PrefixInc -- ^ @++x@
                    | PrefixDec -- ^ @--x@
                    | PostfixInc -- ^ @x++@
                    | PostfixDec -- ^ @x--@
-  deriving (Show, Data, Typeable, Eq, Ord)
+  deriving (Show, Data, Typeable, Eq, Ord, Generic)
 
 -- | Prefix operators: see spec 11.4 (excluding 11.4.4, 11.4.5)
 data PrefixOp = PrefixLNot -- ^ @!@
@@ -108,20 +114,20 @@ data PrefixOp = PrefixLNot -- ^ @!@
               | PrefixTypeof -- ^ @typeof@
               | PrefixVoid -- ^ @void@
               | PrefixDelete -- ^ @delete@
-  deriving (Show,Data,Typeable,Eq,Ord)
+  deriving (Show,Data,Typeable,Eq,Ord,Generic)
 
 -- | Property names in an object initializer: see spec 11.1.5
 data Prop a = PropId a (Id a) -- ^ property name is an identifier, @foo@
             | PropString a String -- ^ property name is a string, @\"foo\"@
             | PropNum a Integer -- ^ property name is an integer, @42@
-  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)
  
 -- | Left-hand side expressions: see spec 11.2
 data LValue a
   = LVar a String -- ^ variable reference, @foo@
   | LDot a (Expression a) String -- ^ @foo.bar@
   | LBracket a (Expression a) (Expression a) -- ^ @foo[bar]@
-  deriving (Show, Eq, Ord, Data, Typeable, Functor,Foldable,Traversable) 
+  deriving (Show, Eq, Ord, Data, Typeable, Functor,Foldable,Traversable,Generic) 
 
 -- | Expressions, see spec 11
 data Expression a
@@ -139,7 +145,7 @@ data Expression a
   | VarRef a (Id a) -- ^ @foo@, spec 11.1.2
   | DotRef a (Expression a) (Id a) -- ^ @foo.bar@, spec 11.2.1
   | BracketRef a (Expression a) {- container -} (Expression a) {- key -} 
-    -- ^ @foo[bar@, spec 11.2.1
+    -- ^ @foo[bar]@, spec 11.2.1
   | NewExpr a (Expression a) {- constructor -} [Expression a] 
     -- ^ @new foo(bar)@, spec 11.2.2
   | PrefixExpr a PrefixOp (Expression a) 
@@ -154,40 +160,41 @@ data Expression a
     -- ^ @e1 \@=e2@, spec 11.13
   | ListExpr a [Expression a] -- ^ @e1, e2@, spec 11.14
   | CallExpr a (Expression a) [Expression a] -- ^ @f(x,y,z)@, spec 11.2.3
+  | SuperExpr a [Expression a] -- ^ @super(x,y,z)@
   --funcexprs are optionally named
   | FuncExpr a (Maybe (Id a)) [Id a] [Statement a]
     -- ^ @function f (x,y,z) {...}@, spec 11.2.5, 13
   -- PV adding cast expression, the casted type will be in the annotation a
   | Cast a (Expression a)
-  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable,Generic)
 
 -- | Case clauses, spec 12.11
 data CaseClause a = CaseClause a (Expression a) [Statement a]
                     -- ^ @case e: stmts;@
                   | CaseDefault a [Statement a]
                     -- ^ @default: stmts;@
-  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)
 
 -- | Catch clause, spec 12.14
 data CatchClause a = CatchClause a (Id a) (Statement a) 
                      -- ^ @catch (x) {...}@
-  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)
 
 -- | A variable declaration, spec 12.2
 data VarDecl a = VarDecl a (Id a) (Maybe (Expression a)) 
                  -- ^ @var x = e;@
-  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)
   
 -- | for initializer, spec 12.6
 data ForInit a = NoInit -- ^ empty
                | VarInit [VarDecl a] -- ^ @var x, y=42@
                | ExprInit (Expression a) -- ^ @expr@
-  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)
 
 -- | for..in initializer, spec 12.6
 data ForInInit a = ForInVar (Id a) -- ^ @var x@
                  | ForInLVal (LValue a) -- ^ @foo.baz@, @foo[bar]@, @z@
- deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)
+ deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)
   
 -- | Statements, spec 12.
 data Statement a 
@@ -228,7 +235,20 @@ data Statement a
     -- ^ @var x, y=42;@, spec 12.2
   | FunctionStmt a (Id a) {-name-} [Id a] {-args-} [Statement a] {-body-}
     -- ^ @function f(x, y, z) {...}@, spec 13
-  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable)  
+  | ClassStmt a (Id a) (Maybe (Id a)) {-extends-} [Id a] {-implem-} [ClassElt a]
+    -- ^ @class C /*@ <t1, ...> {...}@
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable,Generic)
+
+-- | Class element
+-- http://www.typescriptlang.org/Content/TypeScript%20Language%20Specification.pdf
+-- spec 8.1.2
+data ClassElt a
+  = Constructor a [Id a] {-args-} [Statement a] {-body-}
+  | MemberVarDecl a Bool {-mod:pub/pri-} Bool {-static-} (VarDecl a)
+  | MemberMethDecl a Bool {-mod:pub/pri-} Bool {-static-} (Id a) [Id a] [Statement a] 
+--  | IndexSignature
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)  
+
 
 -- | Returns 'True' if the statement is an /IterationStatement/
 -- according to spec 12.6.
@@ -236,7 +256,7 @@ isIterationStmt :: Statement a -> Bool
 isIterationStmt s = case s of
   WhileStmt {}   -> True
   DoWhileStmt {} -> True
-  ForStmt {} -> True
-  ForInStmt {} -> True
-  _                 -> False
+  ForStmt {}     -> True
+  ForInStmt {}   -> True
+  _              -> False
   

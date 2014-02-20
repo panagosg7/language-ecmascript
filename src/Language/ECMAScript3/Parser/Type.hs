@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric #-}
 module Language.ECMAScript3.Parser.Type(
     Parser
   , ParserState (..)
@@ -13,11 +13,12 @@ import Data.Typeable
 import Data.Data
 import Data.Hashable
 import qualified Data.HashMap.Strict as M
+import GHC.Generics
 
 data SourceSpan    = Span { sp_begin :: !SourcePos
                           , sp_end   :: !SourcePos 
                           }
-                       deriving (Eq, Ord, Show, Data, Typeable)
+                       deriving (Eq, Ord, Show, Data, Typeable,Generic)
 
 instance Hashable SourceSpan where 
   hashWithSalt i z = hashWithSalt i (sp_begin z, sp_end z)
