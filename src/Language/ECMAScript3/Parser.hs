@@ -3,7 +3,6 @@
 module Language.ECMAScript3.Parser
   (parse
   , parseScriptFromString
-  , parseScriptFromJSON
   , parseJavaScriptFromFile
   , parseJavaScriptFromFile'
   , parseScript
@@ -993,48 +992,4 @@ parseString externP str = case parse externP parseScript "" str of
   Left err                    -> error (show err)
   Right (Script _ stmts, _ )  -> stmts
 
-
--- | Parse JSON
-
-instance A.FromJSON (Expression (SourceSpan, Maybe String))
-instance A.FromJSON (Statement (SourceSpan, Maybe String))
-instance A.FromJSON (LValue (SourceSpan, Maybe String))
-instance A.FromJSON (JavaScript (SourceSpan, Maybe String))
-instance A.FromJSON (ClassElt (SourceSpan, Maybe String))
-instance A.FromJSON (CaseClause (SourceSpan, Maybe String))
-instance A.FromJSON (CatchClause (SourceSpan, Maybe String))
-instance A.FromJSON (ForInit (SourceSpan, Maybe String))
-instance A.FromJSON (ForInInit (SourceSpan, Maybe String))
-instance A.FromJSON (VarDecl (SourceSpan, Maybe String))
-instance A.FromJSON (Id (SourceSpan, Maybe String))
-instance A.FromJSON (Prop (SourceSpan, Maybe String))
-instance A.FromJSON InfixOp
-instance A.FromJSON AssignOp
-instance A.FromJSON PrefixOp
-instance A.FromJSON UnaryAssignOp
-instance A.FromJSON SourceSpan
-
-instance A.FromJSON SourcePos where
-  parseJSON (A.Array v) = do
-    v0 <- A.parseJSON (v!0) :: AI.Parser String 
-    v1 <- A.parseJSON (v!1) :: AI.Parser Int
-    v2 <- A.parseJSON (v!2) :: AI.Parser Int
-    return $ newPos v0 v1 v2
-  parseJSON _ = error "SourcePos should only be an A.Array" 
-
-decodeOrDie s = 
-  case A.eitherDecode s :: Either String [Statement (SourceSpan, Maybe String)] of
-    Left msg -> error msg
-    Right p  -> p
-
-getJSON :: MonadIO m => FilePath -> m B.ByteString
-getJSON = liftIO . B.readFile
-
-parseScriptFromJSON' :: FilePath -> IO [Statement (SourceSpan, Maybe String)]
-parseScriptFromJSON' filename = do
-  chars <- getJSON filename
-  return $ decodeOrDie chars
-
-parseScriptFromJSON :: MonadIO m => FilePath -> m [Statement (SourceSpan, Maybe String)]
-parseScriptFromJSON = liftIO . parseScriptFromJSON'
 

@@ -15,7 +15,7 @@ import Data.Generics(Data,Typeable)
 import Data.Aeson
 import Data.Aeson.Types
 import Data.Vector        ((!), fromList)
-import Text.Parsec.Pos (newPos, sourceColumn, sourceLine, sourceName)
+import Text.Parsec.Pos (newPos, sourceColumn, sourceLine, sourceName, SourcePos)
 import Control.Monad.Trans (MonadIO,liftIO)
 import Data.Text (pack)
 import Prelude hiding (maybe)
@@ -29,9 +29,6 @@ import GHC.Generics
 data SourceSpan    = Span { sp_begin :: !SourcePos
                           , sp_end   :: !SourcePos 
                           }
-                       deriving (Eq, Ord, Show, Data, Typeable,Generic)
-
-data SrcPos = SrcPos String Int Int                        
                        deriving (Eq, Ord, Show, Data, Typeable,Generic)
 
 
@@ -300,6 +297,92 @@ instance PP a =>  PP (Prop a) where
 instance (PP a, PP b, PP c) => PP (a,b,c) where
   pp (x, y, z) = (pp x) <+> (text ":") <+> (pp y) <+> (text ":") <+> (pp z)
 
+class HasAnnotation a where
+  -- | Returns the annotation of the root of the tree
+  getAnnotation :: a b -> b
+
+instance HasAnnotation Expression where
+  getAnnotation e = case e of
+   StringLit a s              -> a
+   RegexpLit a s g ci         -> a
+   NumLit a d                 -> a
+   IntLit a i                 -> a
+   BoolLit a b                -> a
+   NullLit a                  -> a
+   ArrayLit a exps            -> a
+   ObjectLit a props          -> a
+   ThisRef a                  -> a
+   VarRef a id                -> a
+   DotRef a exp id            -> a
+   BracketRef a container key -> a
+   NewExpr a ctor params      -> a
+   PrefixExpr a op e          -> a
+   UnaryAssignExpr a op lv    -> a
+   InfixExpr a op e1 e2       -> a
+   CondExpr a g et ef         -> a
+   AssignExpr a op lv e       -> a
+   ListExpr a es              -> a
+   CallExpr a fn params       -> a
+   FuncExpr a mid args s      -> a
+   Cast a e                   -> a
+   SuperExpr a _ 	      -> a
+
+instance HasAnnotation Statement where
+  getAnnotation s = case s of
+    BlockStmt a _        -> a
+    EmptyStmt a          -> a
+    ExprStmt a _         -> a
+    IfStmt a _ _ _       -> a
+    IfSingleStmt a _ _   -> a
+    SwitchStmt a _ _     -> a
+    WhileStmt a _ _      -> a
+    DoWhileStmt a _ _    -> a
+    BreakStmt a _        -> a
+    ContinueStmt a _     -> a
+    LabelledStmt a _ _   -> a
+    ForInStmt a _ _ _    -> a
+    ForStmt a _ _ _ _    -> a
+    TryStmt a _ _ _      -> a
+    ThrowStmt a _        -> a
+    ReturnStmt a _       -> a
+    WithStmt a _ _       -> a
+    VarDeclStmt a _      -> a
+    FunctionStmt a _ _ _ -> a
+    ClassStmt a _ _ _ _  -> a
+    
+instance HasAnnotation LValue where
+  getAnnotation lv = case lv of
+    LVar a _ -> a
+    LDot a _ _ -> a
+    LBracket a _ _ -> a
+  
+instance HasAnnotation VarDecl where
+  getAnnotation (VarDecl a _ _) = a
+
+instance HasAnnotation Prop  where
+  getAnnotation p = case p of
+    PropId a _ -> a
+    PropString a _ -> a
+    PropNum a _ -> a
+  
+instance HasAnnotation CaseClause where
+  getAnnotation c = case c of
+    CaseClause a _ _ -> a
+    CaseDefault a _ -> a
+    
+instance HasAnnotation CatchClause where
+  getAnnotation (CatchClause a _ _) = a
+
+instance HasAnnotation Id where
+  getAnnotation (Id a _) = a 
+
+instance HasAnnotation ClassElt where
+  getAnnotation e = case e of
+    Constructor a _ _          -> a
+    MemberVarDecl a _ _ _      -> a
+    MemberMethDecl a _ _ _ _ _ -> a
+
+
 ----------------------------------------------------------------------------
 
 
@@ -396,7 +479,8 @@ ppStatement s = case s of
               text "catch" <+> (parens.ppId) id <+> inBlock s
   ThrowStmt _ e -> text "throw" <+> ppExpression True e <> semi
   WithStmt _ e s -> text "with" <+> parens (ppExpression True e) $$ ppStatement s
-  VarDeclStmt _ decls ->
+  VarDeclStmt a decls ->
+    pp a $$
     text "var" <+> cat (punctuate comma (map (ppVarDecl True) decls)) <> semi
   FunctionStmt a name args body ->
     pp a $$
@@ -710,21 +794,20 @@ instance PP (SourceSpan, Maybe String) where
   pp (_, Just s)  = text "/*@" <+> text s <+> text "*/"
   pp (_, Nothing) = text ""
 
-instance PP (MyAnnot) where
-  pp (Spec s) = text "/*@ spec" <+> text s <+> text "*/"
-  pp (Meas s) = text "/*@ meas" <+> text s <+> text "*/"
-  pp (Bind s) = text "/*@ bind" <+> text s <+> text "*/"
-  pp (Extern s) = text "/*@ extern" <+> text s <+> text "*/"
-  pp (Type s) = text "/*@type" <+> text s <+> text "*/"
-  pp (TAlias s) = text "/*@talias" <+> text s <+> text "*/"
-  pp (PAlias s) = text "/*@palias" <+> text s <+> text "*/"
-  pp (Qual s) = text "/*@qual" <+> text s <+> text "*/"
-  pp (Invt s) = text "/*@invt" <+> text s <+> text "*/"
+instance PP (RawSpec) where
+  pp (RawMeas s) = text "/*@ meas" <+> text s <+> text "*/"
+  pp (RawBind s) = text "/*@ bind" <+> text s <+> text "*/"
+  pp (RawExtern s) = text "/*@ extern" <+> text s <+> text "*/"
+  pp (RawType s) = text "/*@type" <+> text s <+> text "*/"
+  pp (RawTAlias s) = text "/*@talias" <+> text s <+> text "*/"
+  pp (RawPAlias s) = text "/*@palias" <+> text s <+> text "*/"
+  pp (RawQual s) = text "/*@qual" <+> text s <+> text "*/"
+  pp (RawInvt s) = text "/*@invt" <+> text s <+> text "*/"
 
-instance PP [MyAnnot] where 
+instance PP [RawSpec] where 
   pp ss = cat (map pp ss)
 
-instance PP (SourceSpan, [MyAnnot]) where
+instance PP (SourceSpan, [RawSpec]) where
   pp (_, ms) = pp ms
 
 instance PP (SourceSpan) where
@@ -732,6 +815,7 @@ instance PP (SourceSpan) where
 
 instance PP SourcePos where 
   pp = ppSourcePos 
+
 ppSourcePos src = parens 
                 $ int l <> comma <> int c
   where 
@@ -762,24 +846,25 @@ instance FromJSON (VarDecl SourceSpan)
 instance FromJSON (Id SourceSpan)
 instance FromJSON (Prop SourceSpan)
 
-instance FromJSON (Expression (SourceSpan, [MyAnnot]))
-instance FromJSON (Statement (SourceSpan, [MyAnnot]))
-instance FromJSON (LValue (SourceSpan, [MyAnnot]))
-instance FromJSON (JavaScript (SourceSpan, [MyAnnot]))
-instance FromJSON (ClassElt (SourceSpan, [MyAnnot]))
-instance FromJSON (CaseClause (SourceSpan, [MyAnnot]))
-instance FromJSON (CatchClause (SourceSpan, [MyAnnot]))
-instance FromJSON (ForInit (SourceSpan, [MyAnnot]))
-instance FromJSON (ForInInit (SourceSpan, [MyAnnot]))
-instance FromJSON (VarDecl (SourceSpan, [MyAnnot]))
-instance FromJSON InfixOp
-instance FromJSON AssignOp
-instance FromJSON (Id (SourceSpan, [MyAnnot]))
-instance FromJSON PrefixOp
-instance FromJSON (Prop (SourceSpan, [MyAnnot]))
-instance FromJSON MyAnnot
-instance FromJSON (SourceSpan, [MyAnnot])
+instance FromJSON (Expression (SourceSpan, [RawSpec]))
+instance FromJSON (Statement (SourceSpan, [RawSpec]))
+instance FromJSON (LValue (SourceSpan, [RawSpec]))
+instance FromJSON (JavaScript (SourceSpan, [RawSpec]))
+instance FromJSON (ClassElt (SourceSpan, [RawSpec]))
+instance FromJSON (CaseClause (SourceSpan, [RawSpec]))
+instance FromJSON (CatchClause (SourceSpan, [RawSpec]))
+instance FromJSON (ForInit (SourceSpan, [RawSpec]))
+instance FromJSON (ForInInit (SourceSpan, [RawSpec]))
+instance FromJSON (VarDecl (SourceSpan, [RawSpec]))
+instance FromJSON (Id (SourceSpan, [RawSpec]))
+instance FromJSON (Prop (SourceSpan, [RawSpec]))
+instance FromJSON (SourceSpan, [RawSpec])
+
 instance FromJSON UnaryAssignOp
+instance FromJSON InfixOp
+instance FromJSON RawSpec
+instance FromJSON PrefixOp
+instance FromJSON AssignOp
 
 instance ToJSON (Expression SourceSpan)
 instance ToJSON (Statement SourceSpan)
@@ -825,22 +910,21 @@ instance (PP a, PP b) => PP (Either a b) where
 instance PP [Char] where
   pp = ptext
 
-data MyAnnot
-  = Spec String
-  | Meas String
-  | Bind String
-  | Extern String
-  | Type String
-  | TAlias String
-  | PAlias String
-  | Qual String
-  | Invt String
+data RawSpec
+  = RawMeas   String
+  | RawBind   String
+  | RawExtern String
+  | RawType   String
+  | RawTAlias String
+  | RawPAlias String
+  | RawQual   String 
+  | RawInvt   String
   deriving (Show,Eq,Ord,Data,Typeable,Generic)
 
 
 
 decodeOrDie s = 
-  case eitherDecode s :: Either String [Statement (SourceSpan, [MyAnnot])] of
+  case eitherDecode s :: Either String [Statement (SourceSpan, [RawSpec])] of
     Left msg -> error msg
     Right p  -> p
 

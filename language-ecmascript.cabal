@@ -48,7 +48,7 @@ Library
     unordered-containers,
     hashable,
     bytestring,
-    aeson,
+    aeson <= 0.6.1.0,
     vector,
     text
   ghc-options:
