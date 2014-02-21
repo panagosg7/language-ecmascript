@@ -456,9 +456,8 @@ ppCastExpression hasIn e = case e of
 -- PV Adding new levels for Super
 ppExpression :: Bool -> Expression a -> Doc
 ppExpression hasIn e = case e of
-  SuperExpr _ es  ->  text "super" <> (ppArguments es)
-  _         -> ppCastExpression hasIn e
-
+  SuperRef _ -> text "super"
+  _          -> ppCastExpression hasIn e
 
 
 maybe :: Maybe a -> (a -> Doc) -> Doc

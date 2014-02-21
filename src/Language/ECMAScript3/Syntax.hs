@@ -160,7 +160,7 @@ data Expression a
     -- ^ @e1 \@=e2@, spec 11.13
   | ListExpr a [Expression a] -- ^ @e1, e2@, spec 11.14
   | CallExpr a (Expression a) [Expression a] -- ^ @f(x,y,z)@, spec 11.2.3
-  | SuperExpr a [Expression a] -- ^ @super(x,y,z)@
+  | SuperRef a -- ^ @super@, TS spec
   --funcexprs are optionally named
   | FuncExpr a (Maybe (Id a)) [Id a] [Statement a]
     -- ^ @function f (x,y,z) {...}@, spec 11.2.5, 13
