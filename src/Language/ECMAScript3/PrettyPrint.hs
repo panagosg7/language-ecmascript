@@ -176,12 +176,12 @@ ppClassElt (Constructor _ args body) =
   text "constructor" <>
   parens (cat $ punctuate comma (map ppId args)) $$ 
   ssAsBlock body
-ppClassElt (MemberVarDecl _ m s vd) = 
-  text (ite m "public" "private" ++ ite s " static" "") <+> 
+ppClassElt (MemberVarDecl _ s vd) = 
+  text ({-ite m "public" "private" ++ -}ite s " static" "") <+> 
   ppVarDecl False vd <+>
   text ";"
-ppClassElt (MemberMethDecl _ m s name args body) = 
-  text (ite m "public" "private" ++ ite s " static" "") <+> 
+ppClassElt (MemberMethDecl _ s name args body) = 
+  text ({-ite m "public" "private" ++ -}ite s " static" "") <+> 
   ppId name <> 
   parens (cat $ punctuate comma (map ppId args)) $$ 
   ssAsBlock body
