@@ -244,8 +244,8 @@ data Statement a
 -- spec 8.1.2
 data ClassElt a
   = Constructor a [Id a] {-args-} [Statement a] {-body-}
-  | MemberVarDecl a {-Bool-} {-mod:pub/pri-} Bool {-static-} (VarDecl a)
-  | MemberMethDecl a {-Bool-} {-mod:pub/pri-} Bool {-static-} (Id a) [Id a] [Statement a] 
+  | MemberVarDecl a Bool {-static-} (VarDecl a)
+  | MemberMethDecl a Bool {-static-} (Id a) [Id a] [Statement a] 
 --  | IndexSignature
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)  
 
