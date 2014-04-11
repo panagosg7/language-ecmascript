@@ -160,7 +160,7 @@ data Expression a
     -- ^ @e1 \@=e2@, spec 11.13
   | ListExpr a [Expression a] -- ^ @e1, e2@, spec 11.14
   | CallExpr a (Expression a) [Expression a] -- ^ @f(x,y,z)@, spec 11.2.3
-  | SuperExpr a [Expression a] -- ^ @super(x,y,z)@
+  | SuperRef a -- ^ @super@, TS spec
   --funcexprs are optionally named
   | FuncExpr a (Maybe (Id a)) [Id a] [Statement a]
     -- ^ @function f (x,y,z) {...}@, spec 11.2.5, 13
@@ -244,8 +244,8 @@ data Statement a
 -- spec 8.1.2
 data ClassElt a
   = Constructor a [Id a] {-args-} [Statement a] {-body-}
-  | MemberVarDecl a Bool {-mod:pub/pri-} Bool {-static-} (VarDecl a)
-  | MemberMethDecl a Bool {-mod:pub/pri-} Bool {-static-} (Id a) [Id a] [Statement a] 
+  | MemberVarDecl a Bool {-static-} (VarDecl a)
+  | MemberMethDecl a Bool {-static-} (Id a) [Id a] [Statement a] 
 --  | IndexSignature
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)  
 

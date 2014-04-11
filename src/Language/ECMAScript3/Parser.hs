@@ -407,8 +407,8 @@ parseMemberFuncDecl = do
           let (EP tP _ _ _)  = e s
           a                 <- inAnnotP tP
           pos               <- getPosition
-          mod               <- try (reserved "public" >> return True) 
-                           <|> try (option True (reserved "private" >> return False))
+          {-mod               <- try (reserved "public" >> return True) -}
+                           {-<|> try (option True (reserved "private" >> return False))-}
           static            <- option False (reserved "static" >> return True)
           name              <- identifier
           args              <- parens (identifier `sepBy` comma)
@@ -418,19 +418,19 @@ parseMemberFuncDecl = do
           let span           = Span pos pos'
           PST e s l         <- getState
           putState           $ PST e (updSpan span (Just a) s) l
-          return             $ MemberMethDecl span mod static name args body)
+          return             $ MemberMethDecl span {-mod-} static name args body)
 
 parseMemberVarDecl :: Stream s Identity Char => ClassEltParser s t
 parseMemberVarDecl = do
   try (do pos               <- getPosition
-          mod               <- try (reserved "public" >> return True) 
-                           <|> try (option True (reserved "private" >> return False))
+          {-mod               <- try (reserved "public" >> return True) -}
+                           {-<|> try (option True (reserved "private" >> return False))-}
           static            <- option False (reserved "static" >> return True)
           varDecl           <- parseVarDecl
           pos'              <- getPosition
           let span           = Span pos pos'
           semi
-          return             $ MemberVarDecl span mod static varDecl)
+          return             $ MemberVarDecl span {-mod-} static varDecl)
 
 
 parseClassStmt :: Stream s Identity Char => StatementParser s t

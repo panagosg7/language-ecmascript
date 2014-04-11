@@ -127,6 +127,7 @@ instance Arbitrary a => Arbitrary (Expression a) where
   arbitrary = 
     sGen [(0, liftM  ThisRef arbitrary),
           (0, liftM  NullLit arbitrary),
+          (0, liftM  SuperRef arbitrary),
           (0, liftM2 StringLit arbitrary arbitrary),
           (0, liftM2 NumLit arbitrary nonNegative),
           (0, liftM2 IntLit arbitrary nonNegative),
@@ -159,6 +160,7 @@ instance Arbitrary a => Arbitrary (Expression a) where
     (cshrink es) ++ es ++
     [ObjectLit na nxs | na <- shrink a, nxs <- shrink xs]
   shrink (ThisRef a) = [ThisRef na | na <- shrink a]
+  shrink (SuperRef a) = [SuperRef na | na <- shrink a]
   shrink (VarRef a id) = [VarRef na nid | na <- shrink a, nid <- shrink id]
   shrink (DotRef a e id) = [DotRef na ne nid | na <-shrink a, nid <- shrink id,  ne <- shrink e]
   shrink (BracketRef a o k) = [BracketRef na no nk | na <- shrink a, no <-shrink o, nk <- shrink k]
@@ -217,6 +219,7 @@ instance Arbitrary a => Arbitrary (Statement a) where
           (1, liftM2 ReturnStmt arbitrary rarbitrary),
           (2, liftM3 WithStmt arbitrary rarbitrary rarbitrary),
           (2, liftM2 VarDeclStmt arbitrary rrarbitrary),
+          (4, liftM5 ClassStmt arbitrary rrarbitrary rrarbitrary rrarbitrary rrarbitrary),
           (1, liftM4 FunctionStmt arbitrary arbitrary arbitrary rarbitrary)]
     where arbtry = 
             do (mCatch, mFinally) <- oneof [liftM2 (,) (return Nothing) (liftM Just rarbitrary),
@@ -263,6 +266,11 @@ instance Arbitrary a => Arbitrary (Statement a) where
                                [VarDeclStmt as vdss | as <- shrink a, vdss <- shrink vds]
   shrink (FunctionStmt a n pars b) = emptyStmtShrink a ++
                                      [FunctionStmt as ns parss bs | as <- shrink a, ns <- shrink n, parss <- shrink pars, bs <- shrink b]
+  shrink (ClassStmt a id e is ss) = emptyStmtShrink a ++ [ClassStmt na nid ne nis nss | na <- shrink a, nid <- shrink id, ne <- shrink e, nis <- shrink is, nss <- shrink ss]
+
+
+-- TODO: maybe expand this at some point...
+instance Arbitrary a => Arbitrary (ClassElt a)
     
 emptyStmtShrink a = [EmptyStmt a2 | a2 <- shrink a]    
 

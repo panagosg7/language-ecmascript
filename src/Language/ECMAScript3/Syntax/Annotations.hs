@@ -68,7 +68,7 @@ instance HasAnnotation Expression where
    CallExpr a fn params       -> a
    FuncExpr a mid args s      -> a
    Cast a e                   -> a
-   SuperExpr a _ 	      -> a
+   SuperRef a         	      -> a
 
 instance HasAnnotation Statement where
   getAnnotation s = case s of
@@ -121,7 +121,7 @@ instance HasAnnotation Id where
 
 instance HasAnnotation ClassElt where
   getAnnotation e = case e of
-    Constructor a _ _          -> a
-    MemberVarDecl a _ _ _      -> a
-    MemberMethDecl a _ _ _ _ _ -> a
+    Constructor a _ _        -> a
+    MemberVarDecl a _ _      -> a
+    MemberMethDecl a _ _ _ _ -> a
 

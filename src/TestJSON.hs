@@ -405,7 +405,7 @@ asBlock f ss = lbrace $+$ nest 2 (f ss) $$ rbrace
 
 ssAsBlock = asBlock stmtList
 
-classEltAsBlock :: PP a => [ClassElt a] => Doc
+classEltAsBlock :: PP a => [ClassElt a] -> Doc
 classEltAsBlock = asBlock classEltList
 
 ppId (Id _ str) = text str
