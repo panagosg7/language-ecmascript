@@ -30,7 +30,6 @@ module Language.ECMAScript3.Syntax (JavaScript(..)
 
 import Text.Parsec.Pos(initialPos,SourcePos) -- used by data JavaScript
 import Data.Generics(Data,Typeable)
-import Data.Aeson
 import Data.Text
 import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)
