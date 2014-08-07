@@ -10,6 +10,7 @@ module Language.ECMAScript3.Syntax (JavaScript(..)
                                    ,unJavaScript
                                    ,Statement(..)
                                    ,ClassElt(..)
+                                   ,ModuleElt(..)
                                    ,isIterationStmt
                                    ,CaseClause(..)
                                    ,CatchClause(..)
@@ -36,9 +37,8 @@ import Data.Traversable (Traversable)
 import Data.Default
 import GHC.Generics
 
-data JavaScript a
-  -- |A script in \<script\> ... \</script\> tags.
-  = Script a [Statement a] 
+data JavaScript a   -- | A script in \<script\> ... \</script\> tags.
+  = Script a [Statement a]
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)
 
 instance Default a => Default (JavaScript a) where
@@ -234,18 +234,36 @@ data Statement a
     -- ^ @var x, y=42;@, spec 12.2
   | FunctionStmt a (Id a) {-name-} [Id a] {-args-} [Statement a] {-body-}
     -- ^ @function f(x, y, z) {...}@, spec 13
+
+  -- ^ TypeScipt
+  
+  | FunctionDecl a (Id a) {-name-} [Id a] {-args-}
+    -- ^ @declare function f(x, y, z); @
+
   | ClassStmt a (Id a) (Maybe (Id a)) {-extends-} [Id a] {-implem-} [ClassElt a]
-    -- ^ @class C /*@ <t1, ...> {...}@
+    -- ^ @class C<V> extends C'<T> {...}@
+  
+  | ModuleStmt a (Id a) [ModuleElt a]
+    -- ^ @module M {...}@
+
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable,Generic)
 
--- | Class element
+
+--------------------------------------------------------------------------------
+-- | TypeScript
+--------------------------------------------------------------------------------
+--
 -- http://www.typescriptlang.org/Content/TypeScript%20Language%20Specification.pdf
--- spec 8.1.2
-data ClassElt a
+--
+
+data ClassElt a   -- Class element, spec 8.1.2
   = Constructor a [Id a] {-args-} [Statement a] {-body-}
   | MemberVarDecl a Bool {-static-} (VarDecl a)
   | MemberMethDecl a Bool {-static-} (Id a) [Id a] [Statement a] 
---  | IndexSignature
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)  
+
+data ModuleElt a  -- Module element
+  = ModuleElt a Bool (Statement a)
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)  
 
 
@@ -258,4 +276,4 @@ isIterationStmt s = case s of
   ForStmt {}     -> True
   ForInStmt {}   -> True
   _              -> False
-  
+
