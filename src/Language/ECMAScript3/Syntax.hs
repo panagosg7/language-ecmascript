@@ -245,6 +245,11 @@ data Statement a
   
   | ModuleStmt a (Id a) [ModuleElt a]
     -- ^ @module M {...}@
+    
+  | IfaceStmt a 
+    -- ^ @interface A {...}@ 
+    -- Just a placeholder for interface annotations 
+    -- (instead of using an EmptyStmt)
 
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable,Generic)
 
