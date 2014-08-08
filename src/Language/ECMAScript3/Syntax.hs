@@ -263,7 +263,7 @@ data ClassElt a   -- Class element, spec 8.1.2
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)  
 
 data ModuleElt a  -- Module element
-  = ModuleElt a Bool (Statement a)
+  = ModuleElt Bool (Statement a)
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)  
 
 
