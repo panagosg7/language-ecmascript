@@ -10,7 +10,6 @@ module Language.ECMAScript3.Syntax (JavaScript(..)
                                    ,unJavaScript
                                    ,Statement(..)
                                    ,ClassElt(..)
-                                   ,ModuleElt(..)
                                    ,isIterationStmt
                                    ,CaseClause(..)
                                    ,CatchClause(..)
