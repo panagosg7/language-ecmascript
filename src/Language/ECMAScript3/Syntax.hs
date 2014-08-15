@@ -239,14 +239,11 @@ data Statement a
   
   | FunctionDecl a (Id a) {-name-} [Id a] {-args-}
     -- ^ @declare function f(x, y, z); @
-
   | ClassStmt a (Id a) (Maybe (Id a)) {-extends-} [Id a] {-implem-} [ClassElt a]
     -- ^ @class C<V> extends C'<T> {...}@
-  
-  | ModuleStmt a (Id a) [ModuleElt a]
+  | ModuleStmt a (Id a) [Statement a]
     -- ^ @module M {...}@
-    
-  | IfaceStmt a 
+  | IfaceStmt a
     -- ^ @interface A {...}@ 
     -- Just a placeholder for interface annotations 
     -- (instead of using an EmptyStmt)
@@ -265,11 +262,7 @@ data ClassElt a   -- Class element, spec 8.1.2
   = Constructor a [Id a] {-args-} [Statement a] {-body-}
   | MemberVarDecl a Bool {-static-} (VarDecl a)
   | MemberMethDecl a Bool {-static-} (Id a) [Id a] [Statement a] 
-  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)  
-
-data ModuleElt a  -- Module element
-  = ModuleElt Bool (Statement a)
-  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)  
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)
 
 
 -- | Returns 'True' if the statement is an /IterationStatement/
