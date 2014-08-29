@@ -30,16 +30,14 @@ module Language.ECMAScript3.Syntax (JavaScript(..)
 
 import Text.Parsec.Pos(initialPos,SourcePos) -- used by data JavaScript
 import Data.Generics(Data,Typeable)
-import Data.Aeson
 import Data.Text
 import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)
 import Data.Default
 import GHC.Generics
 
-data JavaScript a
-  -- |A script in \<script\> ... \</script\> tags.
-  = Script a [Statement a] 
+data JavaScript a   -- | A script in \<script\> ... \</script\> tags.
+  = Script a [Statement a]
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)
 
 instance Default a => Default (JavaScript a) where
@@ -235,19 +233,35 @@ data Statement a
     -- ^ @var x, y=42;@, spec 12.2
   | FunctionStmt a (Id a) {-name-} [Id a] {-args-} [Statement a] {-body-}
     -- ^ @function f(x, y, z) {...}@, spec 13
+
+  -- ^ TypeScipt
+  
+  | FunctionDecl a (Id a) {-name-} [Id a] {-args-}
+    -- ^ @declare function f(x, y, z); @
   | ClassStmt a (Id a) (Maybe (Id a)) {-extends-} [Id a] {-implem-} [ClassElt a]
-    -- ^ @class C /*@ <t1, ...> {...}@
+    -- ^ @class C<V> extends C'<T> {...}@
+  | ModuleStmt a (Id a) [Statement a]
+    -- ^ @module M {...}@
+  | IfaceStmt a
+    -- ^ @interface A {...}@ 
+    -- Just a placeholder for interface annotations 
+    -- (instead of using an EmptyStmt)
+
   deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable,Generic)
 
--- | Class element
+
+--------------------------------------------------------------------------------
+-- | TypeScript
+--------------------------------------------------------------------------------
+--
 -- http://www.typescriptlang.org/Content/TypeScript%20Language%20Specification.pdf
--- spec 8.1.2
-data ClassElt a
+--
+
+data ClassElt a   -- Class element, spec 8.1.2
   = Constructor a [Id a] {-args-} [Statement a] {-body-}
   | MemberVarDecl a Bool {-static-} (VarDecl a)
   | MemberMethDecl a Bool {-static-} (Id a) [Id a] [Statement a] 
---  | IndexSignature
-  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)  
+  deriving (Show,Data,Typeable,Eq,Ord,Functor,Foldable,Traversable, Generic)
 
 
 -- | Returns 'True' if the statement is an /IterationStatement/
@@ -259,4 +273,4 @@ isIterationStmt s = case s of
   ForStmt {}     -> True
   ForInStmt {}   -> True
   _              -> False
-  
+

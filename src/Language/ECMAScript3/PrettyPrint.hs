@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances        #-}
+{-# LANGUAGE OverlappingInstances     #-}
 
 -- | Pretty-printing JavaScript.
 module Language.ECMAScript3.PrettyPrint
@@ -171,6 +172,15 @@ ppStatement s = case s of
         is -> text "implements" <+> cat (punctuate comma (map ppId is))) $$
     classEltAsBlock body
 
+  FunctionDecl _ name args ->
+    text "function" <+> ppId name <> 
+    parens (cat $ punctuate comma (map ppId args))
+  ModuleStmt _ name body ->
+    text "module" <+> ppId name $$ ssAsBlock body
+  IfaceStmt _ -> text "// interface placeholder"
+
+
+
 ppClassElt :: ClassElt a -> Doc
 ppClassElt (Constructor _ args body) = 
   text "constructor" <>
@@ -185,6 +195,7 @@ ppClassElt (MemberMethDecl _ s name args body) =
   ppId name <> 
   parens (cat $ punctuate comma (map ppId args)) $$ 
   ssAsBlock body
+
 
 ite True a _  = a 
 ite False _ a = a 
