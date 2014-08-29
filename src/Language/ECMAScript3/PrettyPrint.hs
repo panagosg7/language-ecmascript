@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances        #-}
+{-# LANGUAGE OverlappingInstances     #-}
 
 -- | Pretty-printing JavaScript.
 module Language.ECMAScript3.PrettyPrint
