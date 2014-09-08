@@ -38,7 +38,10 @@ instance PP (ClassElt a)  where
   pp = ppClassElt 
 
 instance PP (ForInit a) where 
-  pp = forInit 
+  pp = ppForInit 
+
+instance PP (ForInInit a) where 
+  pp = ppForInInit
 
 instance PP (LValue a) where 
   pp = ppLValue 
@@ -87,14 +90,14 @@ classEltAsBlock = asBlock classEltList
 
 ppId (Id _ str) = text str
 
-forInit :: ForInit a -> Doc
-forInit t = case t of
+ppForInit :: ForInit a -> Doc
+ppForInit t = case t of
   NoInit     -> empty
   VarInit vs -> text "var" <+> cat (punctuate comma $ map (ppVarDecl False) vs)
   ExprInit e -> ppExpression False e
 
-forInInit :: ForInInit a -> Doc  
-forInInit t = case t of
+ppForInInit :: ForInInit a -> Doc  
+ppForInInit t = case t of
   ForInVar id   -> text "var" <+> ppId id
   ForInLVal lv -> ppLValue lv
 
@@ -138,11 +141,11 @@ ppStatement s = case s of
   LabelledStmt _ label s -> ppId label <> colon $$ ppStatement s
   ForInStmt p init e body -> 
     text "for" <+> 
-    parens (forInInit init <+> text "in" <+> ppExpression True e) $+$ 
+    parens (ppForInInit init <+> text "in" <+> ppExpression True e) $+$ 
     ppStatement body
   ForStmt _ init incr test body ->
     text "for" <+> 
-    parens (forInit init <> semi <+> maybe incr (ppExpression True) <> 
+    parens (ppForInit init <> semi <+> maybe incr (ppExpression True) <> 
             semi <+> maybe test (ppExpression True)) $$ 
     ppStatement body
   TryStmt _ stmt mcatch mfinally ->
