@@ -174,6 +174,7 @@ instance Arbitrary a => Arbitrary (Expression a) where
   shrink (CallExpr a e es) = (shrink e) ++ [e] ++ (cshrink es) ++ es ++ [CallExpr na ne nes | na <- shrink a, ne <- shrink e, nes <- shrink es]
   shrink (FuncExpr a mid ids s) = [FuncExpr na nmid nids ns | na <- shrink a, nmid <-  shrink mid, nids <- shrink ids, ns <- shrink s]
   shrink (Cast a e) = (shrink e) ++ [e] ++ [Cast na ne | na <- shrink a, ne <- shrink e]
+  shrink (Cast_ a e) = (shrink e) ++ [e] ++ [Cast_ na ne | na <- shrink a, ne <- shrink e]
 
 instance Arbitrary a => Arbitrary (ForInInit a) where
   arbitrary = oneof [liftM ForInVar arbitrary,
@@ -267,6 +268,11 @@ instance Arbitrary a => Arbitrary (Statement a) where
   shrink (FunctionStmt a n pars b) = emptyStmtShrink a ++
                                      [FunctionStmt as ns parss bs | as <- shrink a, ns <- shrink n, parss <- shrink pars, bs <- shrink b]
   shrink (ClassStmt a id e is ss) = emptyStmtShrink a ++ [ClassStmt na nid ne nis nss | na <- shrink a, nid <- shrink id, ne <- shrink e, nis <- shrink is, nss <- shrink ss]
+  shrink (IfaceStmt a) = emptyStmtShrink a
+  shrink (FunctionDecl a i xs ) = emptyStmtShrink a ++ 
+                             [FunctionDecl as is xss | as <- shrink a, is <- shrink i, xss <- shrink xs]
+  shrink (ModuleStmt a i xs ) = emptyStmtShrink a ++ 
+                             [ModuleStmt as is xss | as <- shrink a, is <- shrink i, xss <- shrink xs]
 
 
 -- TODO: maybe expand this at some point...

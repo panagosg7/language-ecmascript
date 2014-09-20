@@ -77,6 +77,8 @@ expr e = case e of
   FuncExpr _ _ args ss -> nest $ unions [unions $ map decl args
                                         ,unions $ map stmt ss]
   Cast _ e -> expr e
+  Cast_ _ e -> expr e
+  SuperRef _ -> expr e
 
 caseClause :: CaseClause SourcePos -> Partial
 caseClause cc = case cc of
@@ -105,6 +107,8 @@ stmt :: Statement SourcePos -> Partial
 stmt s = case s of
   BlockStmt _ ss -> unions $ map stmt ss
   EmptyStmt _ -> empty
+  FunctionDecl _ _ _ -> empty
+  ClassStmt _ _ _ _ ss -> unions $ map classElt ss
   ExprStmt _ e -> expr e
   IfStmt _ e s1 s2 -> unions [expr e, stmt s1, stmt s2]
   IfSingleStmt _ e s -> unions [expr e, stmt s]
@@ -123,9 +127,16 @@ stmt s = case s of
   ReturnStmt _ me -> maybe empty expr me
   WithStmt _ e s -> unions [expr e, stmt s]
   VarDeclStmt _ decls -> unions $ map varDecl decls
+  ModuleStmt _ _ ss -> unions $ map stmt ss
+  IfaceStmt _ -> empty
   FunctionStmt _ fnId args ss ->
     unions [decl fnId, nest $ unions [unions $ map decl args,
                                       unions $ map stmt ss]]
+
+classElt :: ClassElt SourcePos -> Partial
+classElt (Constructor _ _ ss) = unions $ map stmt ss
+classElt (MemberVarDecl _ _ c) = varDecl c
+classElt (MemberMethDecl _ _ _ _ ss) = unions $ map stmt ss
 
 -- |The statically-determinate lexical structure of a JavaScript program.
 data EnvTree = EnvTree (M.Map String SourcePos) [EnvTree]

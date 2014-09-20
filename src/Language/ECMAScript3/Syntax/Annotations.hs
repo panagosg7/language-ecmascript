@@ -68,6 +68,7 @@ instance HasAnnotation Expression where
    CallExpr a fn params       -> a
    FuncExpr a mid args s      -> a
    Cast a e                   -> a
+   Cast_ a e                  -> a
    SuperRef a         	      -> a
 
 instance HasAnnotation Statement where
@@ -93,6 +94,8 @@ instance HasAnnotation Statement where
     FunctionStmt a _ _ _ -> a
     ClassStmt a _ _ _ _  -> a
     ModuleStmt a _ _     -> a
+    FunctionDecl a _ _   -> a
+    IfaceStmt a          -> a
     
 instance HasAnnotation LValue where
   getAnnotation lv = case lv of
